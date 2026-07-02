@@ -1,0 +1,309 @@
+---
+const navItems = [
+  { label: "首页", href: "/" },
+  { label: "技术", href: "/blog/" },
+  { label: "开发", href: "/blog/category/development/" },
+  { label: "科研", href: "/blog/category/research/" },
+  { label: "学习笔记", href: "/blog/category/notes/" },
+  { label: "项目", href: "/projects/" },
+  { label: "关于", href: "/about/" },
+];
+
+const normalize = (path: string) =>
+  path !== "/" ? path.replace(/\/$/, "") : path;
+const currentPath = normalize(Astro.url.pathname);
+
+function isActive(href: string) {
+  const target = normalize(href);
+
+  if (target === "/") {
+    return currentPath === "/";
+  }
+
+  if (target === "/blog") {
+    return (
+      currentPath === "/blog" ||
+      (currentPath.startsWith("/blog/") &&
+        !currentPath.startsWith("/blog/category/"))
+    );
+  }
+
+  return currentPath === target || currentPath.startsWith(`${target}/`);
+}
+---
+
+<header class="site-header">
+  <div class="site-shell header-inner">
+    <a class="brand" href="/" aria-label="AloftVox 首页">
+      <span>AloftVox</span>
+      <small>Notes, Projects &amp; Experiments</small>
+    </a>
+    <div class="header-actions">
+      <nav class="site-nav desktop-nav" aria-label="主导航">
+        {
+          navItems.map((item) => (
+            <a
+              href={item.href}
+              aria-current={isActive(item.href) ? "page" : undefined}
+            >
+              {item.label}
+            </a>
+          ))
+        }
+      </nav>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="切换到夜间模式" aria-pressed="false">
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2" />
+          <path d="M12 2.8v2.1M12 19.1v2.1M4.9 4.9l1.5 1.5M17.6 17.6l1.5 1.5M2.8 12h2.1M19.1 12h2.1M4.9 19.1l1.5-1.5M17.6 6.4l1.5-1.5" />
+        </svg>
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19.2 15.5A7.7 7.7 0 0 1 8.5 4.8 8.6 8.6 0 1 0 19.2 15.5Z" />
+        </svg>
+      </button>
+      <details class="nav-menu">
+        <summary>菜单</summary>
+        <nav class="site-nav mobile-nav-list" aria-label="移动端主导航">
+          {
+            navItems.map((item) => (
+              <a
+                href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid var(--color-line);
+    background: var(--color-header-bg);
+    backdrop-filter: blur(12px);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 22px;
+    min-height: 66px;
+  }
+
+  .brand {
+    display: grid;
+    gap: 1px;
+    flex: 0 0 auto;
+    color: var(--color-text);
+  }
+
+  .brand span {
+    font-size: 1.12rem;
+    font-weight: 760;
+    line-height: 1.2;
+  }
+
+  .brand small {
+    color: var(--color-subtle);
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  .nav-menu {
+    display: none;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-left: auto;
+    min-width: 0;
+  }
+
+  .site-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px 8px;
+  }
+
+  .site-nav a {
+    border-radius: 6px;
+    padding: 5px 9px;
+    color: var(--color-muted);
+    font-size: 0.94rem;
+    line-height: 1.45;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .site-nav a:hover,
+  .site-nav a[aria-current="page"] {
+    background: var(--color-accent-soft);
+    color: var(--color-accent-strong);
+  }
+
+  .site-nav a[aria-current="page"] {
+    box-shadow: inset 0 -2px 0 rgba(131, 118, 217, 0.45);
+  }
+
+  .theme-toggle {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    padding: 0;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      transform 150ms ease;
+  }
+
+  .theme-toggle:hover {
+    background: var(--color-accent-soft);
+    color: var(--color-accent-strong);
+    transform: translateY(-1px);
+  }
+
+  .theme-icon {
+    grid-area: 1 / 1;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease;
+  }
+
+  .theme-icon-moon {
+    opacity: 0;
+    transform: scale(0.75) rotate(-12deg);
+  }
+
+  :global(html[data-theme="dark"]) .theme-icon-sun {
+    opacity: 0;
+    transform: scale(0.75) rotate(12deg);
+  }
+
+  :global(html[data-theme="dark"]) .theme-icon-moon {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+
+  :global(html[data-theme="dark"]) .site-header {
+    border-bottom-color: #2a303b;
+    background: rgba(17, 19, 24, 0.96);
+  }
+
+  :global(html[data-theme="dark"]) .mobile-nav-list {
+    border-color: #2a303b;
+    background: rgba(23, 26, 33, 0.98);
+  }
+
+  @media (max-width: 720px) {
+    .header-inner {
+      position: relative;
+      min-height: 62px;
+      padding: 10px 0;
+    }
+
+    .brand small {
+      max-width: 180px;
+    }
+
+    .header-actions {
+      gap: 8px;
+    }
+
+    .nav-menu {
+      display: block;
+      align-self: center;
+    }
+
+    .desktop-nav {
+      display: none;
+    }
+
+    .nav-menu summary {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      border: 1px solid var(--color-line);
+      border-radius: 7px;
+      padding: 5px 11px;
+      color: var(--color-muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .nav-menu summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .nav-menu summary::after {
+      content: "";
+      width: 6px;
+      height: 6px;
+      margin-left: 7px;
+      border-right: 1px solid currentColor;
+      border-bottom: 1px solid currentColor;
+      transform: rotate(45deg) translateY(-2px);
+    }
+
+    .nav-menu[open] summary {
+      border-color: rgba(90, 155, 216, 0.42);
+      background: var(--color-accent-soft);
+      color: var(--color-accent-strong);
+    }
+
+    .nav-menu[open] summary::after {
+      transform: rotate(225deg) translateY(-1px);
+    }
+
+    .mobile-nav-list {
+      position: absolute;
+      top: calc(100% - 2px);
+      right: 0;
+      display: none;
+      width: min(240px, calc(100vw - 28px));
+      border: 1px solid var(--color-line);
+      border-radius: 8px;
+      background: var(--color-menu-bg);
+      box-shadow: var(--shadow-soft);
+      padding: 8px;
+    }
+
+    .nav-menu[open] .site-nav {
+      display: grid;
+      gap: 2px;
+    }
+
+    .site-nav a {
+      padding: 8px 9px;
+      font-size: 0.92rem;
+    }
+  }
+</style>

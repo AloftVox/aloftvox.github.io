@@ -1,0 +1,55 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const projects = [
+  {
+    title: "CodeGuard Tutor",
+    description: "面向初学开发者的 VS Code 代码安全学习插件。",
+    href: "/projects/codeguard-tutor/",
+  },
+];
+---
+
+<BaseLayout title="项目" description="AloftVox 的项目记录。">
+  <header class="site-shell page-header">
+    <p class="eyebrow">Projects</p>
+    <h1>项目</h1>
+    <p>目前主要整理 CodeGuard Tutor 的项目背景、实现范围和后续记录。</p>
+  </header>
+
+  <section class="site-shell section-block">
+    <ul class="simple-list project-list">
+      {
+        projects.map((project) => (
+          <li>
+            <a href={project.href}>
+              <h2>{project.title}</h2>
+              <p>{project.description}</p>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</BaseLayout>
+
+<style>
+  .project-list a {
+    display: block;
+    margin: -8px;
+    border-radius: 10px;
+    padding: 8px;
+    transition: background-color 150ms ease;
+  }
+
+  .project-list a:hover {
+    background: var(--color-accent-soft);
+  }
+
+  .project-list a:hover h2 {
+    color: var(--color-accent-strong);
+    text-decoration: underline;
+    text-decoration-color: rgba(90, 155, 216, 0.38);
+    text-underline-offset: 5px;
+  }
+</style>

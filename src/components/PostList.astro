@@ -1,0 +1,30 @@
+---
+import type { CollectionEntry } from "astro:content";
+import PostCard from "./PostCard.astro";
+
+interface Props {
+  posts: CollectionEntry<"blog">[];
+}
+
+const { posts } = Astro.props;
+---
+
+{
+  posts.length > 0 ? (
+    <div class="post-list">
+      {posts.map((post) => <PostCard post={post} />)}
+    </div>
+  ) : (
+    <p class="empty-state">这里暂时还没有文章。</p>
+  )
+}
+
+<style>
+  .empty-state {
+    margin: 0;
+    border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+    padding: 20px 0;
+    color: var(--color-muted);
+  }
+</style>

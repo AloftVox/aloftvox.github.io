@@ -1,0 +1,82 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PostList from "../../components/PostList.astro";
+import { sortPosts } from "../../lib/posts";
+
+const relatedPosts = sortPosts(await getCollection("blog"))
+  .filter(
+    (post) =>
+      post.data.category === "development" &&
+      (post.data.title.includes("CodeGuard") ||
+        post.data.tags.some((tag) =>
+          ["Static Analysis", "Security", "VS Code", "AI"].includes(tag),
+        )),
+  )
+  .slice(0, 3);
+---
+
+<BaseLayout
+  title="CodeGuard Tutor"
+  description="CodeGuard Tutor 项目记录：VS Code 插件、静态分析与 AI 辅助解释。"
+>
+  <article class="article-shell">
+    <header class="article-header">
+      <p class="eyebrow">Project</p>
+      <h1>CodeGuard Tutor</h1>
+      <p class="muted">面向初学开发者的 VS Code 代码安全学习插件。</p>
+    </header>
+
+    <div class="prose">
+      <h2>项目概览</h2>
+      <p>
+        CodeGuard Tutor 关注初学开发者在编写代码时容易忽略的安全问题。项目将 VS Code
+        插件侧的交互、后端静态分析能力和 AI 辅助解释结合起来，让用户在编辑器内看到风险位置、原因和修复建议。
+      </p>
+
+      <h2>做了什么</h2>
+      <p>
+        VS Code 插件 → 获取项目代码 → 静态分析 → AI 辅助解释与修复建议。
+      </p>
+
+      <h2>已实现漏洞类型</h2>
+      <ul>
+        <li>XSS</li>
+        <li>SQL 注入</li>
+        <li>硬编码密钥</li>
+        <li>危险函数调用</li>
+      </ul>
+
+      <h2>Python 侧跨文件分析</h2>
+      <p>
+        Python 分析侧支持项目文件索引、导入解析、函数定义收集和跨模块调用传播，用于补足单文件扫描无法覆盖的污点路径。
+      </p>
+
+      <h2>相关链接</h2>
+      <p>
+        源码：
+        <a href="https://gitee.com/celinaN/code-guard-tutor" target="_blank" rel="noreferrer">
+          https://gitee.com/celinaN/code-guard-tutor
+        </a>
+      </p>
+    </div>
+
+    <section class="related-section" aria-labelledby="related-posts">
+      <h2 id="related-posts">相关文章</h2>
+      <PostList posts={relatedPosts} />
+    </section>
+  </article>
+</BaseLayout>
+
+<style>
+  .related-section {
+    margin-top: 38px;
+    border-top: 1px solid var(--color-line);
+    padding-top: 28px;
+  }
+
+  .related-section h2 {
+    margin-bottom: 16px;
+    font-size: 1.35rem;
+  }
+</style>

@@ -1,0 +1,253 @@
+﻿---
+import { getCollection, render } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCategoryMeta } from "../../data/categories";
+import { formatDate, getPostSlug, getPostUrl, sortPosts } from "../../lib/posts";
+import { getTagTone } from "../../lib/tags";
+
+export async function getStaticPaths() {
+  const posts = sortPosts(await getCollection("blog"));
+
+  return posts.map((post, index) => ({
+    params: { slug: getPostSlug(post) },
+    props: {
+      post,
+      previousPost: posts[index + 1] ?? null,
+      nextPost: posts[index - 1] ?? null,
+    },
+  }));
+}
+
+const { post, previousPost, nextPost } = Astro.props;
+const category = getCategoryMeta(post.data.category);
+const { Content, headings } = await render(post);
+const tocHeadings = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+const showToc = tocHeadings.length >= 2;
+---
+
+<BaseLayout title={post.data.title} description={post.data.description}>
+  <div class="site-shell article-page">
+    <article class="article-main">
+      <a class="back-link" href="/blog/">← 返回文章列表</a>
+      <header class="article-header">
+        <div class="article-meta">
+          <a href={category.href}>{category.label}</a>
+          <time datetime={post.data.pubDate.toISOString()}>{formatDate(post.data.pubDate)}</time>
+        </div>
+        <h1>{post.data.title}</h1>
+        <p class="article-description">{post.data.description}</p>
+        <ul class="tag-list" aria-label="标签">
+          {post.data.tags.map((tag) => <li class={`tag-tone-${getTagTone(tag)}`}>{tag}</li>)}
+        </ul>
+      </header>
+
+      <div class="prose">
+        <Content />
+      </div>
+
+      <footer class="article-footer">
+        <a class="back-list" href="/blog/">返回文章列表</a>
+        {
+          (previousPost || nextPost) && (
+            <nav class="adjacent-posts" aria-label="上一篇和下一篇文章">
+              {previousPost ? (
+                <a href={getPostUrl(previousPost)} class="previous-post">
+                  <span>上一篇</span>
+                  <strong>{previousPost.data.title}</strong>
+                </a>
+              ) : (
+                <span class="post-nav-empty" aria-hidden="true" />
+              )}
+              {nextPost ? (
+                <a href={getPostUrl(nextPost)} class="next-post">
+                  <span>下一篇</span>
+                  <strong>{nextPost.data.title}</strong>
+                </a>
+              ) : (
+                <span class="post-nav-empty" aria-hidden="true" />
+              )}
+            </nav>
+          )
+        }
+      </footer>
+    </article>
+
+    {
+      showToc && (
+        <aside class="toc" aria-label="文章目录">
+          <p>目录</p>
+          <ol>
+            {tocHeadings.map((heading) => (
+              <li class={`depth-${heading.depth}`}>
+                <a href={`#${heading.slug}`}>{heading.text}</a>
+              </li>
+            ))}
+          </ol>
+        </aside>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .article-page {
+    display: grid;
+    grid-template-columns: minmax(0, var(--reading-width)) 220px;
+    gap: 48px;
+    align-items: start;
+    justify-content: center;
+    padding: 46px 0 68px;
+  }
+
+  .article-main {
+    min-width: 0;
+  }
+
+  .back-link {
+    display: inline-flex;
+    margin-bottom: 22px;
+    color: var(--color-muted);
+    font-size: 0.94rem;
+  }
+
+  .back-link:hover,
+  .article-meta a:hover {
+    color: var(--color-accent-strong);
+    text-decoration: underline;
+    text-decoration-color: rgba(90, 155, 216, 0.38);
+    text-underline-offset: 4px;
+  }
+
+  .article-description {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 1.03rem;
+    line-height: 1.75;
+  }
+
+  .toc {
+    position: sticky;
+    top: 96px;
+    margin-top: 74px;
+    border-left: 1px solid var(--color-line);
+    padding-left: 16px;
+    color: var(--color-muted);
+    font-size: 0.88rem;
+  }
+
+  .toc p {
+    margin-bottom: 10px;
+    color: var(--color-text);
+    font-weight: 700;
+  }
+
+  .toc ol {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .toc li.depth-3 {
+    padding-left: 12px;
+  }
+
+  .toc a {
+    color: inherit;
+  }
+
+  .toc a:hover {
+    color: var(--color-accent-strong);
+    text-decoration: underline;
+    text-decoration-color: rgba(90, 155, 216, 0.38);
+    text-underline-offset: 4px;
+  }
+
+  .article-footer {
+    margin-top: 42px;
+    border-top: 1px solid var(--color-line);
+    padding-top: 22px;
+  }
+
+  .back-list {
+    color: var(--color-accent-strong);
+    font-weight: 650;
+    text-decoration: underline;
+    text-decoration-color: rgba(90, 155, 216, 0.35);
+    text-underline-offset: 4px;
+  }
+
+  .back-list:hover {
+    text-decoration-color: currentColor;
+  }
+
+  .adjacent-posts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  .adjacent-posts a {
+    min-height: 98px;
+    border: 1px solid var(--color-line);
+    border-radius: 8px;
+    background: var(--color-surface);
+    padding: 14px;
+    transition:
+      border-color 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .adjacent-posts a:hover {
+    border-color: rgba(131, 118, 217, 0.34);
+    background: var(--color-accent-soft);
+  }
+
+  .adjacent-posts span {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--color-subtle);
+    font-size: 0.84rem;
+  }
+
+  .adjacent-posts strong {
+    display: block;
+    color: var(--color-text);
+    font-size: 0.96rem;
+    line-height: 1.55;
+  }
+
+  .next-post {
+    text-align: right;
+  }
+
+  @media (max-width: 940px) {
+    .article-page {
+      grid-template-columns: minmax(0, var(--reading-width));
+    }
+
+    .toc {
+      display: none;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .article-page {
+      padding-top: 34px;
+    }
+
+    .adjacent-posts {
+      grid-template-columns: 1fr;
+    }
+
+    .post-nav-empty {
+      display: none;
+    }
+
+    .next-post {
+      text-align: left;
+    }
+  }
+</style>

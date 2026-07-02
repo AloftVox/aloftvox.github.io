@@ -1,0 +1,27 @@
+<footer class="site-footer">
+  <div class="site-shell footer-inner">
+    <span>© 2026 AloftVox</span>
+    <span>Built with Astro</span>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--color-line);
+    color: var(--color-muted);
+    font-size: 0.9rem;
+  }
+
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 26px 0 34px;
+  }
+
+  @media (max-width: 640px) {
+    .footer-inner {
+      flex-direction: column;
+    }
+  }
+</style>

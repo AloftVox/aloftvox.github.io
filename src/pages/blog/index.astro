@@ -1,0 +1,50 @@
+﻿---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PostList from "../../components/PostList.astro";
+import { blogCategories } from "../../data/categories";
+import { sortPosts } from "../../lib/posts";
+
+const posts = sortPosts(await getCollection("blog"));
+---
+
+<BaseLayout title="技术文章" description="AloftVox 的技术文章列表。">
+  <header class="site-shell page-header">
+    <p class="eyebrow">Blog</p>
+    <h1>技术文章</h1>
+    <p>项目实现、实验观察、学习笔记和阶段性复盘都会收在这里。</p>
+  </header>
+
+  <section class="site-shell section-block">
+    <div class="category-tabs" aria-label="文章分类">
+      <a href="/blog/" aria-current="page">全部</a>
+      {blogCategories.map((category) => <a href={category.href}>{category.label}</a>)}
+    </div>
+    <PostList posts={posts} />
+  </section>
+</BaseLayout>
+
+<style>
+  .category-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .category-tabs a {
+    border: 1px solid var(--color-line);
+    border-radius: 7px;
+    padding: 5px 10px;
+    background: var(--color-surface);
+    color: var(--color-muted);
+    font-size: 0.94rem;
+  }
+
+  .category-tabs a:hover,
+  .category-tabs a[aria-current="page"] {
+    border-color: rgba(131, 118, 217, 0.34);
+    background: var(--color-accent-soft);
+    color: var(--color-accent-strong);
+  }
+</style>
