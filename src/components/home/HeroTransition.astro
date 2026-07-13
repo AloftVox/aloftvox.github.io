@@ -1,0 +1,60 @@
+<div class="hero-transition" aria-hidden="true"><span></span></div>
+
+<style>
+  .hero-transition {
+    position: relative;
+    z-index: 5;
+    height: 92px;
+    margin-top: -92px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .hero-transition span {
+    content: "";
+    position: absolute;
+    right: -7%;
+    bottom: -28px;
+    left: -7%;
+    height: 94px;
+    background: #fbfaf7;
+    border-radius: 48% 52% 0 0 / 38% 30% 0 0;
+    filter: drop-shadow(0 -8px 17px rgba(202, 214, 231, 0.16));
+    transform: rotate(-0.28deg);
+  }
+
+  .hero-transition::before {
+    content: "";
+    position: absolute;
+    right: -8%;
+    bottom: -15px;
+    left: -8%;
+    height: 86px;
+    background: rgba(244, 247, 251, 0.22);
+    border-radius: 52% 48% 0 0 / 44% 34% 0 0;
+    filter: blur(12px);
+    transform: rotate(0.22deg);
+  }
+
+  .hero-transition::after {
+    content: "";
+    position: absolute;
+    right: -7%;
+    bottom: -23px;
+    left: -7%;
+    height: 91px;
+    background: rgba(184, 199, 219, 0.15);
+    border-radius: 50% 50% 0 0 / 40% 31% 0 0;
+    filter: blur(14px);
+  }
+
+  .hero-transition span {
+    z-index: 1;
+  }
+
+  @media (max-width: 760px) {
+    .hero-transition { height: 48px; margin-top: -48px; }
+    .hero-transition::after,
+    .hero-transition span { height: 43px; }
+  }
+</style>

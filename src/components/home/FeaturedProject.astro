@@ -1,0 +1,33 @@
+---
+import type { featuredProject as FeaturedProjectType } from "../../data/home";
+interface Props { project: typeof FeaturedProjectType; }
+const { project } = Astro.props;
+---
+
+<section class="home-section mission-section" aria-labelledby="mission-title">
+  <div class="home-shell">
+    <div class="section-marker"><span>03</span></div>
+    <header><p>Featured Project</p><h2 id="mission-title">Mission Control</h2><small>精选项目</small></header>
+    <article class="mission-card">
+      <div class="mission-copy"><span>Featured project</span><h3>{project.name}</h3><p>{project.description}</p><small>{project.detail}</small><ul>{project.tags.map((tag) => <li>{tag}</li>)}</ul><div><a href={project.href}>View Project <span aria-hidden="true">→</span></a><a href={project.github} target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a></div></div>
+      <canvas width="620" height="240" aria-hidden="true" data-mission-orbit></canvas>
+    </article>
+  </div>
+</section>
+
+<script>
+  const canvas = document.querySelector<HTMLCanvasElement>("[data-mission-orbit]");
+  const context = canvas?.getContext("2d");
+  if (canvas && context) {
+    const cx = 360; const cy = 120;
+    context.clearRect(0,0,620,240);
+    const colors=["#6d8cff","#9f8cff","#64c3ff"];
+    [0,1,2,3].forEach((ring)=>{context.save();context.translate(cx,cy);context.rotate(-.24+ring*.17);context.strokeStyle=`rgba(132,164,255,${.42-ring*.06})`;context.lineWidth=1.2;context.beginPath();context.ellipse(0,0,90+ring*38,28+ring*10,0,0,Math.PI*2);context.stroke();context.restore();});
+    for(let i=0;i<8;i+=1){const a=i*.79+.25;const rx=96+(i%4)*37;const ry=30+(i%4)*10;const x=cx+Math.cos(a)*rx;const y=cy+Math.sin(a)*ry;context.fillStyle=colors[i%colors.length];context.shadowColor=context.fillStyle;context.shadowBlur=12;context.beginPath();context.arc(x,y,4+(i%2)*2,0,Math.PI*2);context.fill();}
+    context.shadowBlur=24;context.fillStyle="#7d8fff";context.fillRect(cx-24,cy-24,48,48);context.shadowBlur=0;context.strokeStyle="rgba(255,255,255,.75)";context.strokeRect(cx-16,cy-16,32,32);context.strokeStyle="rgba(124,160,255,.42)";for(let x=0;x<620;x+=24){context.beginPath();context.moveTo(x,220);context.lineTo(cx,cy);context.stroke();}
+  }
+</script>
+
+<style>
+  .home-section{background:#fbfaf7;color:#1b1c20}.home-shell{position:relative;width:min(1280px,calc(100% - 80px));margin:0 auto;padding:62px 0 34px 68px}.section-marker{position:absolute;top:66px;bottom:0;left:0;width:24px;border-left:1px solid #d6d9df}.section-marker span{position:absolute;top:-4px;left:-9px;color:#98999d;font:500 .76rem Georgia,serif;background:#fbfaf7;padding:0 4px}header p,header small{margin:0;color:#91939a;font-size:.75rem}header h2{margin:4px 0 1px;font:500 clamp(2.15rem,3vw,3.15rem)/1.02 Georgia,"Microsoft YaHei",serif}.mission-card{position:relative;display:grid;grid-template-columns:minmax(0,.78fr) minmax(460px,1.22fr);align-items:center;min-height:270px;margin-top:26px;overflow:hidden;border:1px solid rgba(135,155,206,.13);border-radius:7px;padding:34px 38px;color:#f7f9ff;background:radial-gradient(circle at 73% 48%,rgba(62,83,151,.28),transparent 37%),radial-gradient(circle at 88% 28%,rgba(128,110,203,.12),transparent 28%),#050710;box-shadow:0 20px 48px rgba(18,20,26,.2),inset 0 1px rgba(255,255,255,.04)}.mission-card::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(120,145,200,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(120,145,200,.04) 1px,transparent 1px);background-size:24px 24px;mask-image:linear-gradient(90deg,transparent 32%,black)}.mission-copy{position:relative;z-index:2}.mission-copy>span{color:#9aa8c8;font-size:.65rem;text-transform:uppercase}.mission-copy h3{margin:5px 0 4px;color:#fff;font-size:1.9rem;font-weight:520}.mission-copy p{margin:0 0 4px;color:#e4e9f6}.mission-copy small{color:#909aaf;line-height:1.55}.mission-copy ul{display:flex;flex-wrap:wrap;gap:6px;margin:17px 0;padding:0;list-style:none}.mission-copy li{border:1px solid rgba(226,234,255,.2);border-radius:4px;padding:2px 7px;color:#c7d0e4;font-size:.66rem}.mission-copy div{display:flex;gap:20px}.mission-copy a{color:#dbe6ff;font-size:.75rem}.mission-card canvas{position:relative;z-index:1;width:100%;height:auto;filter:drop-shadow(0 0 18px rgba(100,132,255,.16))}@media(max-width:820px){.mission-card{grid-template-columns:1fr}.mission-card canvas{position:absolute;right:-180px;width:620px;opacity:.58}}@media(max-width:620px){.home-shell{width:min(100% - 28px,1120px);padding:46px 0 24px}.section-marker{display:none}.mission-card{min-height:300px;padding:28px 22px}.mission-card canvas{right:-260px;bottom:0}}
+</style>

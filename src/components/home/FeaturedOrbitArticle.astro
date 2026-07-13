@@ -1,0 +1,163 @@
+---
+import type { HomeArticle } from "../../data/home";
+
+interface Props {
+  article: HomeArticle;
+}
+
+const { article } = Astro.props;
+---
+
+<aside
+  class="node-detail"
+  aria-live="polite"
+  aria-label="当前节点文章"
+  data-active-node-card
+  data-default-card
+  data-default-card-active
+  data-card-visible
+>
+  <p data-active-node-type>{article.category}</p>
+  <h2 data-active-node-title>{article.title}</h2>
+  <span data-active-node-meta>{article.readingTime}</span>
+  <small data-active-node-description>{article.description}</small>
+  <ul data-active-node-tags aria-label="文章标签">
+    {article.tags.slice(0, 3).map((tag) => <li>{tag}</li>)}
+  </ul>
+  <footer>
+    <time data-active-node-date datetime={article.date}>{article.date}</time>
+    <span data-active-node-reading>{article.readingTime}</span>
+    <b aria-hidden="true">↗</b>
+  </footer>
+</aside>
+
+<style>
+  .node-detail {
+    position: absolute;
+    top: var(--card-y, 48%);
+    left: var(--card-x, 64%);
+    z-index: 12;
+    display: grid;
+    gap: 6px;
+    width: min(330px, calc(100vw - 40px));
+    min-height: 176px;
+    border: 1px solid rgba(218, 228, 250, 0.28);
+    border-radius: 7px;
+    padding: 16px 17px;
+    color: #fff;
+    background: linear-gradient(135deg, rgba(25, 31, 47, 0.82), rgba(7, 10, 17, 0.78));
+    box-shadow: 0 22px 52px rgba(0, 0, 0, 0.4), 0 0 24px rgba(137, 157, 220, 0.08), inset 0 1px rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(18px) saturate(1.12);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+  }
+
+  .node-detail[data-card-visible] {
+    opacity: var(--intro-interface, 1);
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .node-detail[data-default-card-active] {
+    top: clamp(420px, 50%, 520px);
+    left: clamp(500px, 37vw, 720px);
+    gap: 4px;
+    width: 280px;
+    min-height: 0;
+    padding: 12px 14px 11px;
+  }
+
+  .node-detail p,
+  .node-detail h2,
+  .node-detail span,
+  .node-detail small { margin: 0; }
+
+  .node-detail p {
+    color: #a9c9ff;
+    font-size: 0.63rem;
+    font-weight: 760;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .node-detail h2 {
+    color: #f5f7ff;
+    font-size: 0.94rem;
+    font-weight: 560;
+    line-height: 1.32;
+  }
+
+  .node-detail > span,
+  .node-detail small {
+    color: rgba(220, 228, 245, 0.67);
+    font-size: 0.7rem;
+    line-height: 1.48;
+  }
+
+  .node-detail > span { display: none; }
+
+  .node-detail ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 3px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .node-detail li {
+    border: 1px solid rgba(211, 224, 249, 0.16);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: rgba(220, 229, 246, 0.62);
+    font-size: 0.61rem;
+  }
+
+  .node-detail footer {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 2px;
+    color: rgba(208, 218, 236, 0.58);
+    font-size: 0.66rem;
+  }
+
+  .node-detail footer b {
+    margin-left: auto;
+    color: #f8fbff;
+    font-size: 0.92rem;
+    font-weight: 500;
+  }
+
+  .node-detail[data-default-card-active] ul,
+  .node-detail[data-default-card-active] [data-active-node-reading] { display: none; }
+
+  .node-detail[data-default-card-active] small {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 900px) {
+    .node-detail[data-default-card-active] {
+      left: clamp(430px, 36vw, 520px);
+      width: 280px;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .node-detail {
+      top: auto !important;
+      right: 14px;
+      bottom: 102px;
+      left: 14px !important;
+      width: auto;
+      min-height: 126px;
+    }
+
+    .node-detail[data-default-card-active] { display: none; }
+  }
+</style>

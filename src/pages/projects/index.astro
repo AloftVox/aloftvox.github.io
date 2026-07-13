@@ -1,20 +1,13 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-
-const projects = [
-  {
-    title: "CodeGuard Tutor",
-    description: "面向初学开发者的 VS Code 代码安全学习插件。",
-    href: "/projects/codeguard-tutor/",
-  },
-];
+import { projects } from "../../data/projects";
 ---
 
 <BaseLayout title="项目" description="AloftVox 的项目记录。">
   <header class="site-shell page-header">
     <p class="eyebrow">Projects</p>
     <h1>项目</h1>
-    <p>记录一些做过的项目。</p>
+    <p>记录一些做过的项目，以及它们背后的实现、复盘和继续完善的方向。</p>
   </header>
 
   <section class="site-shell section-block">

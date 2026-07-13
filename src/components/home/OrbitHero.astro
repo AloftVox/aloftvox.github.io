@@ -1,0 +1,1098 @@
+---
+import type { OrbitNode, OrbitSourceLink } from "../../lib/orbitNodes";
+import type { HomeArticle } from "../../data/home";
+import { siCsdn, siGitee, siGithub, type SimpleIcon } from "simple-icons";
+import FeaturedOrbitArticle from "./FeaturedOrbitArticle.astro";
+
+interface Props {
+  orbitNodes: OrbitNode[];
+  socialLinks: OrbitSourceLink[];
+  introLines: string[];
+  heroRoles: string[];
+  nodePreviews: Record<string, HomeArticle>;
+}
+
+const { orbitNodes, socialLinks, introLines, heroRoles, nodePreviews } = Astro.props;
+const featuredPreview = nodePreviews["category-web-development"] ?? Object.values(nodePreviews)[0];
+const socialIconById: Record<string, SimpleIcon> = {
+  github: siGithub,
+  gitee: siGitee,
+  csdn: siCsdn,
+};
+---
+
+<script is:inline>
+  document.documentElement.dataset.orbitIntro = "running";
+</script>
+
+<section class="orbit-hero" aria-labelledby="orbit-title" data-orbit-hero data-intro-state="pending" data-intro-running>
+  <div class="orbit-backdrop" aria-hidden="true"></div>
+  <div class="orbit-stage" data-orbit-stage>
+    <canvas data-orbit-v2-canvas aria-hidden="true"></canvas>
+  </div>
+
+  <div class="orbit-hit-layer" aria-label="可探索星图节点">
+    <button class="avatar-hit-target" type="button" data-avatar-target aria-label="翻转 AloftVox 头像"></button>
+    {orbitNodes.map((node) => (
+      <a
+      class={`orbit-node-hotspot orbit-node-hotspot-${node.type}`}
+      href={node.href}
+      style={`--node-color:${node.color}`}
+      data-orbit-node-hotspot={node.id}
+      data-label-side={node.angleSeed > 0.5 ? "left" : "right"}
+      aria-label={node.title}
+    >
+        <span class="sr-node-label">{node.title}</span>
+        {node.type === "category" && (
+          <span class="visible-node-label" aria-hidden="true">
+            <strong>{node.title}</strong>
+            <small>{node.meta}</small>
+          </span>
+        )}
+      </a>
+    ))}
+  </div>
+
+  <div class="hero-topline site-shell" aria-hidden="true">
+    <span>AloftVox</span>
+    <span>Orbit Library / Live Index</span>
+  </div>
+
+  <div class="orbit-copy site-shell">
+    <p class="orbit-kicker">Interactive Knowledge Orbit</p>
+    <h1 id="orbit-title" class="orbit-particle-title" aria-label="AloftVox">
+      <span>AloftVox</span>
+      <canvas data-orbit-title-particles aria-hidden="true"></canvas>
+    </h1>
+    <p class="hero-manifesto">
+      <span data-orbit-role-text>{heroRoles[0]}</span><span class="type-caret" aria-hidden="true"></span>
+    </p>
+    <div class="intro-stack" aria-label="首页叙事">
+      {introLines.map((line) => <p>{line}</p>)}
+    </div>
+  </div>
+
+  {featuredPreview && <FeaturedOrbitArticle article={featuredPreview} />}
+
+  <div class="hero-actions">
+    <div class="intro-controls" aria-label="开场动画控制">
+      <button type="button" data-intro-skip>跳过动画</button>
+      <button type="button" data-intro-replay>重播动画</button>
+    </div>
+    <nav class="social-dock" aria-label="外部链接">
+      {socialLinks.map((link) => {
+        const icon = socialIconById[link.id];
+        return (
+          <a
+            href={link.href}
+            target="_blank"
+            rel="noreferrer"
+            data-social-node={`link-${link.id}`}
+            aria-label={link.title}
+            title={link.title}
+          >
+            {icon && (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d={icon.path}></path>
+              </svg>
+            )}
+            <span>{link.title}</span>
+          </a>
+        );
+      })}
+    </nav>
+  </div>
+
+  <a class="scroll-cue" href="#orbit-index" aria-label="进入内容索引">
+    <span>进入索引</span>
+  </a>
+
+  <p class="sr-only" role="status" data-intro-status>正在生成知识星图</p>
+</section>
+
+<script id="orbit-hero-data" type="application/json" set:html={JSON.stringify({ nodes: orbitNodes, roles: heroRoles, previews: nodePreviews })} />
+
+<script>
+  import { createOrbitIntro } from "../../scripts/orbit-intro";
+  import { createOrbitScene } from "../../scripts/orbit-scene";
+
+  const root = document.querySelector<HTMLElement>("[data-orbit-hero]");
+  const stage = root?.querySelector<HTMLElement>("[data-orbit-stage]");
+  const canvas = root?.querySelector<HTMLCanvasElement>("[data-orbit-v2-canvas]");
+  const avatarTarget = root?.querySelector<HTMLElement>("[data-avatar-target]");
+  const dataElement = document.getElementById("orbit-hero-data");
+  const payload = dataElement?.textContent ? JSON.parse(dataElement.textContent) : { nodes: [], roles: [] };
+
+  if (root && stage && canvas && avatarTarget && Array.isArray(payload.nodes)) {
+    const mobile = window.matchMedia("(max-width: 760px)").matches;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const status = root.querySelector<HTMLElement>("[data-intro-status]");
+    const card = root.querySelector<HTMLElement>("[data-active-node-card]");
+    const defaultCardMarkup = card?.innerHTML ?? "";
+    const roleElement = root.querySelector<HTMLElement>("[data-orbit-role-text]");
+    let activeNodeId = "";
+    let coarseArmedId = "";
+    let roleTimer = 0;
+    let titlePointerX = 0;
+    let titlePointerY = 0;
+
+    const intro = createOrbitIntro({
+      root,
+      mobile,
+      reducedMotion,
+      onFinish: (reason) => {
+        document.documentElement.removeAttribute("data-orbit-intro");
+        if (status) status.textContent = reason === "skipped" ? "已跳过开场动画" : "知识星图已生成";
+      },
+    });
+
+    const titleCanvas = root.querySelector<HTMLCanvasElement>("[data-orbit-title-particles]");
+    const title = root.querySelector<HTMLElement>(".orbit-particle-title");
+    const titleContext = titleCanvas?.getContext("2d", { willReadFrequently: true });
+    let titleMaskSurface: HTMLCanvasElement | null = null;
+    let titleParticles: Array<{ tx: number; ty: number; ox: number; oy: number; size: number; delay: number; depth: number; kind: "body" | "highlight" | "drift" }> = [];
+
+    const buildTitleParticles = () => {
+      if (!titleCanvas || !title || !titleContext) return;
+      const rect = title.getBoundingClientRect();
+      const width = Math.max(250, Math.round(rect.width));
+      const height = Math.max(104, Math.round(rect.height));
+      const dpr = mobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
+      titleCanvas.width = Math.round(width * dpr);
+      titleCanvas.height = Math.round(height * dpr);
+      titleCanvas.style.width = `${width}px`;
+      titleCanvas.style.height = `${height}px`;
+      titleContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+      titleContext.clearRect(0, 0, width, height);
+
+      const maskSurface = document.createElement("canvas");
+      maskSurface.width = width;
+      maskSurface.height = height;
+      const maskContext = maskSurface.getContext("2d", { willReadFrequently: true });
+      if (!maskContext) return;
+
+      const baseSize = 120;
+      const paddingX = mobile ? 10 : 18;
+      const paddingY = mobile ? 8 : 12;
+      maskContext.font = `600 ${baseSize}px Georgia, Times New Roman, serif`;
+      const measured = maskContext.measureText("AloftVox").width;
+      const availableWidth = Math.max(1, width - paddingX * 2);
+      const availableHeight = Math.max(1, height - paddingY * 2);
+      const fontSize = Math.min(availableHeight * 0.82, availableWidth / Math.max(measured, 1) * baseSize * 0.985);
+      maskContext.font = `600 ${fontSize}px Georgia, Times New Roman, serif`;
+      maskContext.textAlign = "left";
+      maskContext.textBaseline = "middle";
+      maskContext.fillStyle = "#ffffff";
+      maskContext.fillText("AloftVox", paddingX, height * 0.51);
+      titleMaskSurface = maskSurface;
+      const pixels = maskContext.getImageData(0, 0, width, height);
+      const gap = mobile ? 2.28 : 1.84;
+      const sourceRect = avatarTarget.getBoundingClientRect();
+      const sourceX = sourceRect.width ? sourceRect.left + sourceRect.width / 2 - rect.left : width * 1.18;
+      const sourceY = sourceRect.height ? sourceRect.top + sourceRect.height / 2 - rect.top : height * 0.52;
+      const next = [];
+      let randomState = 73129;
+      const random = () => {
+        randomState = (randomState * 1664525 + 1013904223) >>> 0;
+        return randomState / 4294967296;
+      };
+      for (let sampleY = paddingY; sampleY < height - paddingY; sampleY += gap) {
+        for (let sampleX = paddingX; sampleX < width - paddingX; sampleX += gap) {
+          const x = Math.min(width - 1, Math.max(0, Math.round(sampleX + (random() - 0.5) * gap * 0.28)));
+          const y = Math.min(height - 1, Math.max(0, Math.round(sampleY + (random() - 0.5) * gap * 0.28)));
+          const alpha = pixels.data[(y * width + x) * 4 + 3];
+          if (alpha < 72) continue;
+          const depth = 0.12 + random() * 0.88;
+          const kind = random() < 0.085 ? "highlight" : "body";
+          next.push({
+            tx: x + (random() - 0.5) * 0.72,
+            ty: y + (random() - 0.5) * 0.72,
+            ox: sourceX + (random() - 0.5) * (120 + depth * 120),
+            oy: sourceY + (random() - 0.5) * (70 + depth * 100),
+            size: kind === "highlight" ? 0.94 + random() * 0.66 : 0.22 + Math.pow(random(), 1.55) * 0.74,
+            delay: random(),
+            depth,
+            kind,
+          });
+          if (random() < 0.006) {
+            const driftDirection = random() > 0.5 ? 1 : -1;
+            next.push({
+              tx: x + driftDirection * (6 + random() * 14),
+              ty: y + (random() - 0.5) * 12,
+              ox: sourceX + (random() - 0.5) * 190,
+              oy: sourceY + (random() - 0.5) * 100,
+              size: 0.28 + random() * 0.44,
+              delay: random(),
+              depth: 0.35 + random() * 0.45,
+              kind: "drift",
+            });
+          }
+        }
+      }
+      titleParticles = next;
+      title.dataset.particlesReady = "true";
+    };
+
+    const renderTitle = (progress: number, elapsed: number) => {
+      if (!titleCanvas || !titleContext) return;
+      const width = titleCanvas.clientWidth || 1;
+      const height = titleCanvas.clientHeight || 1;
+      titleContext.clearRect(0, 0, width, height);
+      if (titleMaskSurface) {
+        titleContext.save();
+        titleContext.globalCompositeOperation = "source-over";
+        titleContext.globalAlpha = 0.082 * Math.min(1, progress * 1.25);
+        titleContext.filter = "blur(1.35px)";
+        titleContext.drawImage(titleMaskSurface, 0, 0, width, height);
+        titleContext.restore();
+      }
+      titleContext.globalCompositeOperation = "lighter";
+      titleParticles.forEach((particle) => {
+        const local = reducedMotion ? 1 : Math.min(1, Math.max(0, (progress - particle.delay * 0.2) / 0.8));
+        const eased = 1 - Math.pow(1 - local, 3);
+        const driftAmount = particle.kind === "drift" ? 0.24 : particle.kind === "highlight" ? 0.12 : 0.055;
+        const drift = reducedMotion ? 0 : Math.sin(elapsed * (0.45 + particle.depth * 0.42) + particle.delay * 17) * driftAmount;
+        const depthOffsetX = titlePointerX * (particle.depth - 0.38) * (mobile ? 1.4 : 4.8);
+        const depthOffsetY = titlePointerY * (particle.depth - 0.38) * (mobile ? 0.9 : 2.8);
+        const x = particle.ox + (particle.tx - particle.ox) * eased + drift + depthOffsetX;
+        const verticalDrift = particle.kind === "drift" ? 0.25 : particle.kind === "highlight" ? 0.12 : 0.045;
+        const y = particle.oy + (particle.ty - particle.oy) * eased + Math.cos(elapsed + particle.delay * 13) * verticalDrift + depthOffsetY;
+        const depthOpacity = 0.28 + particle.depth * 0.72;
+        const alpha = particle.kind === "highlight" ? 0.98 : particle.kind === "drift" ? 0.22 : 0.91;
+        const lilacHighlight = particle.kind === "highlight" && particle.delay > 0.68;
+        const red = particle.kind === "highlight" ? (lilacHighlight ? 226 : 246) : 202 + Math.round(particle.depth * 38);
+        const green = particle.kind === "highlight" ? (lilacHighlight ? 220 : 250) : 216 + Math.round(particle.depth * 30);
+        const blue = particle.kind === "drift" ? 246 : 252 + Math.round(particle.depth * 3);
+        titleContext.fillStyle = `rgba(${red}, ${green}, ${blue}, ${eased * alpha * depthOpacity})`;
+        titleContext.beginPath();
+        titleContext.arc(x, y, particle.size, 0, Math.PI * 2);
+        titleContext.fill();
+        if (particle.kind === "highlight") {
+          titleContext.fillStyle = `rgba(${lilacHighlight ? 211 : 225}, ${lilacHighlight ? 205 : 232}, 255, ${eased * 0.24 * particle.depth})`;
+          titleContext.beginPath();
+          titleContext.arc(x, y, particle.size * (1.65 + particle.depth * 0.72), 0, Math.PI * 2);
+          titleContext.fill();
+        }
+      });
+    };
+
+    const scene = await createOrbitScene({
+      root,
+      stage,
+      canvas,
+      avatarProxy: avatarTarget,
+      nodes: payload.nodes,
+      intro,
+      mobile,
+      reducedMotion,
+      onFrame: (frame, elapsed) => renderTitle(frame.title, elapsed),
+    });
+
+    const nodeById = new Map(payload.nodes.map((node: any) => [node.id, node]));
+    const clearNode = () => {
+      activeNodeId = "";
+      coarseArmedId = "";
+      scene.setActiveNode(null);
+      if (!card?.hasAttribute("data-default-card")) {
+        card?.removeAttribute("data-card-visible");
+        return;
+      }
+      card.innerHTML = defaultCardMarkup;
+      card.style.removeProperty("--card-x");
+      card.style.removeProperty("--card-y");
+      card.setAttribute("data-default-card-active", "");
+      card.setAttribute("data-card-visible", "");
+    };
+
+    const showNode = (nodeId: string, source: HTMLElement) => {
+      const node: any = nodeById.get(nodeId);
+      if (!node || !card) return;
+      activeNodeId = nodeId;
+      scene.setActiveNode(nodeId);
+      card.removeAttribute("data-default-card-active");
+      const preview = payload.previews?.[nodeId];
+      card.querySelector<HTMLElement>("[data-active-node-type]")!.textContent = preview?.category ?? node.type.toUpperCase();
+      card.querySelector<HTMLElement>("[data-active-node-title]")!.textContent = preview?.title ?? node.title;
+      card.querySelector<HTMLElement>("[data-active-node-meta]")!.textContent = preview ? node.meta : node.meta;
+      card.querySelector<HTMLElement>("[data-active-node-description]")!.textContent = preview?.description ?? node.description;
+      card.querySelector<HTMLElement>("[data-active-node-date]")!.textContent = preview?.date ?? "";
+      card.querySelector<HTMLElement>("[data-active-node-reading]")!.textContent = preview?.readingTime ?? "";
+      const tagList = card.querySelector<HTMLElement>("[data-active-node-tags]");
+      if (tagList) {
+        tagList.replaceChildren(...(preview?.tags ?? []).map((tag: string) => {
+          const item = document.createElement("li");
+          item.textContent = tag;
+          return item;
+        }));
+      }
+      const heroRect = root.getBoundingClientRect();
+      const sourceRect = source.getBoundingClientRect();
+      const cardWidth = Math.min(card.offsetWidth || 340, 340);
+      const cardHeight = Math.min(card.offsetHeight || 190, 230);
+      const x = sourceRect.left + sourceRect.width / 2 - heroRect.left;
+      const y = sourceRect.top + sourceRect.height / 2 - heroRect.top;
+      let cardX = Math.max(18, Math.min(heroRect.width - cardWidth - 18, x + 28));
+      const cardY = Math.max(88, Math.min(heroRect.height - cardHeight - 34, y - 34));
+      const avatarRect = avatarTarget.getBoundingClientRect();
+      const avatarLeft = avatarRect.left - heroRect.left;
+      const avatarRight = avatarRect.right - heroRect.left;
+      const overlapsAvatar = cardX < avatarRight + 18 && cardX + cardWidth > avatarLeft - 18
+        && cardY < avatarRect.bottom - heroRect.top + 18 && cardY + cardHeight > avatarRect.top - heroRect.top - 18;
+      if (overlapsAvatar) {
+        const rightCandidate = avatarRight + 24;
+        const leftCandidate = avatarLeft - cardWidth - 24;
+        cardX = rightCandidate + cardWidth < heroRect.width - 18 ? rightCandidate : Math.max(18, leftCandidate);
+      }
+      card.style.setProperty("--card-x", `${cardX}px`);
+      card.style.setProperty("--card-y", `${cardY}px`);
+      card.setAttribute("data-card-visible", "true");
+    };
+
+    root.querySelectorAll<HTMLElement>("[data-orbit-node-hotspot]").forEach((target) => {
+      const nodeId = target.dataset.orbitNodeHotspot ?? "";
+      target.addEventListener("mouseenter", () => showNode(nodeId, target));
+      target.addEventListener("focus", () => showNode(nodeId, target));
+      target.addEventListener("mouseleave", clearNode);
+      target.addEventListener("blur", clearNode);
+      target.addEventListener("click", (event) => {
+        if (!window.matchMedia("(hover: none)").matches || coarseArmedId === nodeId) return;
+        event.preventDefault();
+        coarseArmedId = nodeId;
+        showNode(nodeId, target);
+      });
+    });
+
+    root.querySelectorAll<HTMLElement>("[data-social-node]").forEach((target) => {
+      const nodeId = target.dataset.socialNode ?? "";
+      target.addEventListener("mouseenter", () => showNode(nodeId, target));
+      target.addEventListener("focus", () => showNode(nodeId, target));
+      target.addEventListener("mouseleave", clearNode);
+      target.addEventListener("blur", clearNode);
+    });
+
+    avatarTarget.addEventListener("mouseenter", () => scene.flipAvatar(true));
+    avatarTarget.addEventListener("mouseleave", () => scene.flipAvatar(false));
+    avatarTarget.addEventListener("focus", () => scene.flipAvatar(true));
+    avatarTarget.addEventListener("blur", () => scene.flipAvatar(false));
+    avatarTarget.addEventListener("click", () => scene.flipAvatar());
+
+    const startRoleLoop = () => {
+      if (!roleElement || reducedMotion || roleTimer) return;
+      const roles = Array.isArray(payload.roles) && payload.roles.length ? payload.roles : ["Orbit Library"];
+      if (roles.length < 2) return;
+      let index = 0;
+      roleTimer = window.setInterval(() => {
+        roleElement.style.opacity = "0";
+        window.setTimeout(() => {
+          index = (index + 1) % roles.length;
+          roleElement.textContent = roles[index];
+          roleElement.style.opacity = "1";
+        }, 180);
+      }, 3500);
+    };
+
+    window.addEventListener("aloftvox:orbit-intro-complete", startRoleLoop, { once: true });
+    if (intro.isFinished()) startRoleLoop();
+    root.querySelector<HTMLElement>("[data-intro-skip]")?.addEventListener("click", () => scene.skip());
+    root.querySelector<HTMLElement>("[data-intro-replay]")?.addEventListener("click", () => {
+      document.documentElement.dataset.orbitIntro = "running";
+      clearNode();
+      scene.replay();
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if (!intro.isFinished()) scene.skip();
+      else clearNode();
+    });
+
+    const resizeObserver = new ResizeObserver(buildTitleParticles);
+    if (title) resizeObserver.observe(title);
+    window.requestAnimationFrame(buildTitleParticles);
+
+    root.addEventListener("pointermove", (event) => {
+      const rect = root.getBoundingClientRect();
+      titlePointerX = ((event.clientX - rect.left) / Math.max(rect.width, 1) - 0.5) * 2;
+      titlePointerY = ((event.clientY - rect.top) / Math.max(rect.height, 1) - 0.5) * 2;
+      title?.style.setProperty("--title-rotate-y", `${titlePointerX * 4.2}deg`);
+      title?.style.setProperty("--title-rotate-x", `${titlePointerY * -2.2}deg`);
+    }, { passive: true });
+    root.addEventListener("pointerleave", () => {
+      titlePointerX = 0;
+      titlePointerY = 0;
+      title?.style.setProperty("--title-rotate-y", "0deg");
+      title?.style.setProperty("--title-rotate-x", "0deg");
+    });
+
+    window.addEventListener("pagehide", () => {
+      window.clearInterval(roleTimer);
+      resizeObserver.disconnect();
+      scene.dispose();
+    });
+  } else {
+    document.documentElement.removeAttribute("data-orbit-intro");
+    root?.removeAttribute("data-intro-running");
+    if (root) root.dataset.introState = "settled";
+  }
+</script>
+
+<style>
+  :global(.site-header) {
+    position: fixed !important;
+    inset: 0 0 auto !important;
+    z-index: 30 !important;
+    border-bottom-color: rgba(221, 231, 248, 0.09) !important;
+    background: rgba(4, 6, 11, 0.34) !important;
+    backdrop-filter: blur(14px);
+    transition: opacity 260ms ease, background-color 180ms ease;
+  }
+
+  :global(html[data-orbit-intro="running"] .site-header) {
+    opacity: var(--orbit-interface, 0);
+    pointer-events: none;
+  }
+
+  :global(.site-header[data-scrolled]) {
+    background: rgba(4, 6, 11, 0.82) !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+  }
+
+  :global(.site-header .brand),
+  :global(.site-header .brand span),
+  :global(.site-header .site-nav a),
+  :global(.site-header .theme-toggle),
+  :global(.site-header .nav-menu summary) {
+    color: rgba(245, 248, 255, 0.9) !important;
+  }
+
+  :global(.site-header .brand small) {
+    color: rgba(207, 216, 235, 0.62) !important;
+  }
+
+  .orbit-hero {
+    --intro-interface: 0;
+    --intro-background: 0;
+    --hero-height: clamp(820px, 90svh, 1020px);
+    --hero-stage-width: min(94vw, 1900px);
+    --hero-gutter: max(24px, calc((100vw - var(--hero-stage-width)) / 2));
+    position: relative;
+    width: 100%;
+    min-height: var(--hero-height);
+    overflow: hidden;
+    isolation: isolate;
+    color: #f7f9ff;
+    background: #04060b;
+  }
+
+  .orbit-hero::before {
+    content: "";
+    position: absolute;
+    inset: 8% 0 12% 28%;
+    z-index: -2;
+    background: radial-gradient(circle at 58% 46%, rgba(97, 113, 176, 0.13), transparent 28%), radial-gradient(circle at 36% 66%, rgba(119, 76, 112, 0.08), transparent 24%);
+    filter: blur(18px);
+    pointer-events: none;
+  }
+
+  .orbit-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: -3;
+    background: url("/images/home/orbit-horizon-clean.webp") left calc(100% + 30px) / cover no-repeat;
+    filter: brightness(0.56) saturate(0.64) contrast(0.9);
+    opacity: calc(0.06 + var(--intro-background) * 0.45);
+    transform: scale(1.018) translateY(20px);
+    mask-image: linear-gradient(90deg, #000 0%, #000 43%, rgba(0, 0, 0, 0.68) 58%, transparent 73%);
+  }
+
+  .orbit-stage {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    z-index: -1;
+    width: var(--hero-stage-width);
+    max-width: none;
+    transform: translateX(-50%);
+  }
+
+  [data-orbit-v2-canvas] {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .orbit-hit-layer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    z-index: 8;
+    width: var(--hero-stage-width);
+    max-width: none;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .orbit-node-hotspot,
+  .avatar-hit-target {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--hit-size, 52px);
+    height: var(--hit-size, 52px);
+    border: 0;
+    border-radius: 50%;
+    padding: 0;
+    background: transparent;
+    opacity: 0;
+    pointer-events: auto;
+  }
+
+  .orbit-node-hotspot:not([data-orbit-target-visible]),
+  .avatar-hit-target:not([data-orbit-target-visible]) {
+    pointer-events: none;
+  }
+
+  .orbit-node-hotspot .sr-node-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .orbit-node-hotspot-category {
+    overflow: visible;
+    opacity: calc(var(--intro-interface) * 0.96);
+  }
+
+  .visible-node-label {
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 9px);
+    display: grid;
+    gap: 1px;
+    width: max-content;
+    color: rgba(241, 246, 255, 0.92);
+    text-align: left;
+    transform: translateY(-50%);
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.86)) drop-shadow(0 0 7px color-mix(in srgb, var(--node-color) 20%, transparent));
+    pointer-events: none;
+  }
+
+  [data-label-side="left"] .visible-node-label {
+    right: calc(100% + 9px);
+    left: auto;
+    text-align: right;
+  }
+
+  .visible-node-label strong {
+    color: color-mix(in srgb, var(--node-color) 78%, white);
+    font-size: 0.9rem;
+    font-weight: 690;
+    line-height: 1.2;
+  }
+
+  .visible-node-label small {
+    color: rgba(210, 220, 237, 0.66);
+    font-size: 0.73rem;
+    line-height: 1.2;
+  }
+
+  .orbit-node-hotspot:focus-visible,
+  .avatar-hit-target:focus-visible {
+    outline: 1px solid color-mix(in srgb, var(--node-color, #8db8ff) 74%, white);
+    outline-offset: 7px;
+    opacity: 1;
+  }
+
+  .hero-topline {
+    position: absolute;
+    top: 88px;
+    left: 50%;
+    z-index: 4;
+    display: flex;
+    justify-content: space-between;
+    width: var(--hero-stage-width);
+    color: rgba(205, 216, 235, 0.25);
+    font-size: 0.63rem;
+    transform: translateX(-50%);
+    opacity: var(--intro-interface);
+  }
+
+  .hero-topline span:first-child {
+    visibility: hidden;
+  }
+
+  .orbit-copy {
+    position: relative;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: min(88vw, 1800px);
+    min-height: var(--hero-height);
+    align-items: flex-start;
+    padding: 118px 0 126px;
+    pointer-events: none;
+    transform: translateY(-30px);
+  }
+
+  .orbit-copy::before {
+    content: "";
+    position: absolute;
+    top: 24%;
+    left: -7%;
+    z-index: -1;
+    width: min(700px, 58vw);
+    height: 330px;
+    background: radial-gradient(ellipse at 42% 52%, rgba(4, 6, 11, 0.52), rgba(4, 6, 11, 0.18) 58%, transparent 76%);
+    pointer-events: none;
+  }
+
+  .orbit-kicker {
+    margin: 0 0 10px;
+    color: #9ccaff;
+    font-size: 0.78rem;
+    font-weight: 760;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: var(--intro-interface);
+  }
+
+  .orbit-particle-title {
+    --title-rotate-x: 0deg;
+    --title-rotate-y: 0deg;
+    position: relative;
+    width: min(760px, 46vw);
+    min-height: clamp(150px, 14vw, 210px);
+    margin: 0 0 6px;
+    color: #ffffff;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(4.6rem, 7.2vw, 7rem);
+    font-weight: 600;
+    line-height: 0.96;
+    letter-spacing: 0;
+    transform: perspective(900px) rotateX(var(--title-rotate-x)) rotateY(var(--title-rotate-y));
+    transform-origin: 18% 50%;
+    transition: transform 180ms ease-out;
+  }
+
+  .orbit-particle-title > span {
+    display: block;
+    color: rgba(225, 236, 255, 0.16);
+    text-shadow: 0 0 24px rgba(107, 155, 218, 0.1);
+    transform: none;
+    filter: none;
+    opacity: 1;
+  }
+
+  .orbit-particle-title[data-particles-ready="true"] > span {
+    opacity: 0;
+  }
+
+  .orbit-particle-title canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 5px rgba(170, 203, 245, 0.25)) drop-shadow(5px 7px 9px rgba(5, 8, 14, 0.5));
+  }
+
+  .hero-manifesto {
+    width: min(540px, 43.7vw);
+    min-height: 1.5em;
+    margin: 0 0 7px;
+    color: rgba(199, 212, 233, 0.72);
+    font-size: clamp(0.94rem, 1.12vw, 1.04rem);
+    font-weight: 580;
+    line-height: 1.42;
+    white-space: nowrap;
+    opacity: var(--intro-interface);
+  }
+
+  [data-orbit-role-text] {
+    transition: opacity 180ms ease;
+  }
+
+  .type-caret {
+    display: inline-block;
+    width: 2px;
+    height: 0.95em;
+    margin-left: 6px;
+    background: #d79a5a;
+    transform: translateY(0.12em);
+    animation: caret 900ms steps(2, start) infinite;
+  }
+
+  @keyframes caret {
+    50% { opacity: 0; }
+  }
+
+  .intro-stack {
+    display: grid;
+    gap: 4px;
+    max-width: 540px;
+    opacity: var(--intro-interface);
+  }
+
+  .intro-stack p {
+    margin: 0;
+    color: rgba(197, 208, 227, 0.46);
+    font-size: 0.89rem;
+    line-height: 1.58;
+  }
+
+  .intro-stack p:nth-child(n + 3) {
+    display: none;
+  }
+
+  .node-detail {
+    position: absolute;
+    top: var(--card-y, 48%);
+    left: var(--card-x, 64%);
+    z-index: 12;
+    display: grid;
+    gap: 6px;
+    width: min(330px, calc(100vw - 40px));
+    min-height: 176px;
+    border: 1px solid rgba(208, 222, 248, 0.24);
+    border-radius: 7px;
+    padding: 16px 17px;
+    color: #ffffff;
+    background: rgba(7, 10, 17, 0.82);
+    box-shadow: 0 22px 52px rgba(0, 0, 0, 0.36);
+    backdrop-filter: blur(18px);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+  }
+
+  .node-detail[data-card-visible] {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .node-detail p,
+  .node-detail h2,
+  .node-detail span,
+  .node-detail small {
+    margin: 0;
+  }
+
+  .node-detail ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .node-detail li {
+    border: 1px solid rgba(211, 224, 249, 0.18);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: rgba(220, 229, 246, 0.68);
+    font-size: 0.65rem;
+  }
+
+  .node-detail footer {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 2px;
+    color: rgba(208, 218, 236, 0.52);
+    font-size: 0.68rem;
+  }
+
+  .node-detail footer b { margin-left: auto; color: #fff; font-weight: 500; }
+
+  .node-detail p {
+    color: #d79a5a;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+  }
+
+  .node-detail h2 {
+    font-size: 1.18rem;
+    line-height: 1.28;
+  }
+
+  .node-detail span,
+  .node-detail small {
+    color: rgba(223, 232, 249, 0.68);
+    font-size: 0.84rem;
+    line-height: 1.52;
+  }
+
+  .hero-actions {
+    position: absolute;
+    right: var(--hero-gutter);
+    bottom: 76px;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: calc(var(--intro-interface) * 0.72);
+  }
+
+  .social-dock {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .social-dock a {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(216, 228, 249, 0.11);
+    border-radius: 50%;
+    color: rgba(223, 232, 249, 0.5);
+    background: rgba(5, 8, 14, 0.28);
+    box-shadow: inset 0 0 10px rgba(117, 168, 231, 0.025);
+    transition: color 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  }
+
+  .social-dock a svg {
+    width: 13px;
+    height: 13px;
+    fill: currentColor;
+  }
+
+  .social-dock a span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .social-dock a:hover,
+  .social-dock a:focus-visible {
+    border-color: rgba(156, 202, 255, 0.5);
+    color: #ffffff;
+    background: rgba(15, 25, 41, 0.68);
+    box-shadow: 0 0 18px rgba(112, 178, 255, 0.18), inset 0 0 12px rgba(148, 195, 255, 0.08);
+    transform: translateY(-2px);
+  }
+
+  .orbit-hero:has(.node-detail[data-card-visible]) .social-dock {
+    opacity: 0.22;
+  }
+
+  .intro-controls {
+    position: static;
+  }
+
+  .intro-controls button {
+    min-height: 30px;
+    border: 1px solid rgba(218, 229, 249, 0.14);
+    border-radius: 6px;
+    padding: 4px 9px;
+    color: rgba(235, 241, 253, 0.58);
+    font: inherit;
+    font-size: 0.7rem;
+    background: rgba(5, 8, 14, 0.3);
+    cursor: pointer;
+  }
+
+  [data-intro-replay] {
+    display: inline-flex;
+  }
+
+  [data-intro-skip] {
+    display: none;
+  }
+
+  [data-intro-running] [data-intro-skip] {
+    display: inline-flex;
+  }
+
+  [data-intro-running] [data-intro-replay] {
+    display: none;
+  }
+
+  .scroll-cue {
+    position: absolute;
+    left: var(--hero-gutter);
+    bottom: 34px;
+    z-index: 10;
+    display: block;
+    width: 24px;
+    height: 94px;
+    opacity: var(--intro-interface);
+  }
+
+  .scroll-cue::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 1px;
+    height: 82px;
+    background: rgba(239, 244, 255, 0.58);
+  }
+
+  .scroll-cue::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: calc(50% - 5px);
+    width: 10px;
+    height: 10px;
+    border: 1px solid rgba(239, 244, 255, 0.78);
+    border-radius: 50%;
+    background: #080c14;
+  }
+
+  .scroll-cue span,
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 960px) {
+    .orbit-copy {
+      transform: translateY(-22px);
+    }
+
+  }
+
+  @media (min-width: 1800px) {
+    .orbit-copy {
+      transform: translateY(-62px);
+    }
+  }
+
+  @media (min-width: 761px) and (max-height: 800px) {
+    .orbit-hero {
+      --hero-height: clamp(740px, 96svh, 780px);
+    }
+  }
+
+  @media (min-width: 2200px) and (min-height: 1200px) {
+    .orbit-hero {
+      --hero-height: clamp(1020px, 88svh, 1240px);
+    }
+
+    .orbit-copy {
+      transform: translateY(-154px);
+    }
+  }
+
+  @media (max-width: 760px) {
+    .orbit-hero {
+      --hero-height: max(780px, calc(100svh - 56px));
+      --hero-stage-width: 100vw;
+      min-height: var(--hero-height);
+    }
+
+    .hero-topline {
+      display: none;
+    }
+
+    .orbit-backdrop {
+      background-position: 58% bottom;
+      opacity: calc(0.08 + var(--intro-background) * 0.46);
+    }
+
+    .orbit-copy {
+      justify-content: flex-start;
+      width: min(100% - 28px, var(--shell-width));
+      min-height: var(--hero-height);
+      padding: 92px 0 0;
+      transform: none;
+    }
+
+    .orbit-kicker {
+      font-size: 0.68rem;
+    }
+
+    .orbit-particle-title {
+      width: 100%;
+      min-height: 108px;
+      margin-top: 2px;
+      font-size: clamp(3.45rem, 16.5vw, 4.35rem);
+    }
+
+    .visible-node-label {
+      display: none;
+    }
+
+    .hero-manifesto {
+      width: 100%;
+      margin-top: 2px;
+      font-size: 0.94rem;
+    }
+
+    .intro-stack {
+      width: 78%;
+    }
+
+    .intro-stack p {
+      font-size: 0.88rem;
+    }
+
+    .intro-stack p:not(:first-child) {
+      display: none;
+    }
+
+    .hero-actions {
+      right: 14px;
+      bottom: 58px;
+      gap: 6px;
+    }
+
+    .social-dock a {
+      width: 32px;
+      height: 32px;
+    }
+
+    .scroll-cue {
+      left: 14px;
+      bottom: 20px;
+      height: 66px;
+    }
+
+    .scroll-cue::before {
+      height: 54px;
+    }
+
+    .node-detail {
+      position: absolute;
+      top: auto !important;
+      right: 14px;
+      bottom: 102px;
+      left: 14px !important;
+      width: auto;
+      min-height: 126px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .type-caret {
+      animation: none;
+    }
+
+    .node-detail,
+    :global(.site-header) {
+      transition-duration: 120ms !important;
+    }
+  }
+</style>
