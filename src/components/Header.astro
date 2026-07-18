@@ -1,10 +1,15 @@
 ---
+import { getCollection } from "astro:content";
+import { blogCategories } from "../data/categories";
+
+const populatedCategoryKeys = new Set((await getCollection("blog")).map((post) => post.data.category));
+const populatedCategories = blogCategories.filter((category) => populatedCategoryKeys.has(category.key));
 const navItems = [
   { label: "首页", href: "/" },
-  { label: "技术", href: "/blog/" },
-  { label: "开发", href: "/blog/category/development/" },
-  { label: "科研", href: "/blog/category/research/" },
-  { label: "学习笔记", href: "/blog/category/notes/" },
+  { label: "文章", href: "/blog/" },
+  ...(populatedCategories.length >= 2
+    ? populatedCategories.map((category) => ({ label: category.label, href: category.href }))
+    : []),
   { label: "项目", href: "/projects/" },
   { label: "关于", href: "/about/" },
 ];
@@ -36,7 +41,7 @@ function isActive(href: string) {
   <div class="site-shell header-inner">
     <a class="brand" href="/" aria-label="AloftVox 首页">
       <span>AloftVox</span>
-      <small>Notes, Projects &amp; Experiments</small>
+      <small>技术博客 · 项目复盘 · 学习笔记</small>
     </a>
     <div class="header-actions">
       <nav class="site-nav desktop-nav" aria-label="主导航">
@@ -103,13 +108,15 @@ function isActive(href: string) {
     gap: 22px;
     width: min(88vw, 1800px);
     max-width: none;
-    min-height: 62px;
+    min-height: 68px;
   }
 
   .brand {
     display: grid;
+    align-content: center;
     gap: 1px;
     flex: 0 0 auto;
+    min-height: 44px;
     color: var(--color-text);
   }
 
@@ -144,15 +151,21 @@ function isActive(href: string) {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 4px 15px;
+    gap: 4px 18px;
   }
 
   .site-nav a {
     position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
     border-radius: 0;
-    padding: 6px 0;
+    padding: 6px 3px;
     color: var(--color-muted);
-    font-size: 0.82rem;
+    font-size: 0.94rem;
+    font-weight: 540;
     line-height: 1.45;
     transition:
       background-color 150ms ease,
@@ -173,8 +186,8 @@ function isActive(href: string) {
     display: inline-grid;
     place-items: center;
     flex: 0 0 auto;
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     border: 0;
     border-radius: 999px;
     background: transparent;
@@ -236,7 +249,7 @@ function isActive(href: string) {
     .header-inner {
       position: relative;
       width: min(100% - 28px, var(--shell-width));
-      min-height: 62px;
+      min-height: 68px;
       padding: 10px 0;
     }
 
@@ -246,6 +259,11 @@ function isActive(href: string) {
 
     .header-actions {
       gap: 8px;
+    }
+
+    .theme-toggle {
+      width: 44px;
+      height: 44px;
     }
 
     .nav-menu {
@@ -260,7 +278,7 @@ function isActive(href: string) {
     .nav-menu summary {
       display: inline-flex;
       align-items: center;
-      min-height: 34px;
+      min-height: 44px;
       border: 1px solid var(--color-line);
       border-radius: 7px;
       padding: 5px 11px;
@@ -268,6 +286,7 @@ function isActive(href: string) {
       font-size: 0.9rem;
       cursor: pointer;
       list-style: none;
+      white-space: nowrap;
     }
 
     .nav-menu summary::-webkit-details-marker {
@@ -315,6 +334,27 @@ function isActive(href: string) {
     .site-nav a {
       padding: 8px 9px;
       font-size: 0.92rem;
+    }
+
+    .mobile-nav-list a {
+      display: flex;
+      align-items: center;
+      min-height: 48px;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .brand small {
+      display: none;
+    }
+
+    .header-actions {
+      gap: 4px;
+    }
+
+    .theme-toggle {
+      width: 44px;
+      height: 44px;
     }
   }
 </style>

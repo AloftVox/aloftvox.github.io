@@ -13,7 +13,7 @@ interface Props {
 }
 
 const { orbitNodes, socialLinks, introLines, heroRoles, nodePreviews } = Astro.props;
-const featuredPreview = nodePreviews["category-web-development"] ?? Object.values(nodePreviews)[0];
+const featuredPreview = nodePreviews["category-development"] ?? Object.values(nodePreviews)[0];
 const socialIconById: Record<string, SimpleIcon> = {
   github: siGithub,
   gitee: siGitee,
@@ -32,21 +32,21 @@ const socialIconById: Record<string, SimpleIcon> = {
   </div>
 
   <div class="orbit-hit-layer" aria-label="可探索星图节点">
-    <button class="avatar-hit-target" type="button" data-avatar-target aria-label="翻转 AloftVox 头像"></button>
+    <button class="avatar-hit-target" type="button" data-avatar-target aria-label="切换首页星际影像"></button>
     {orbitNodes.map((node) => (
       <a
       class={`orbit-node-hotspot orbit-node-hotspot-${node.type}`}
       href={node.href}
       style={`--node-color:${node.color}`}
       data-orbit-node-hotspot={node.id}
-      data-label-side={node.angleSeed > 0.5 ? "left" : "right"}
+      data-label-side={node.id === "category-design-ux" ? "right" : node.angleSeed > 0.5 ? "left" : "right"}
       aria-label={node.title}
     >
         <span class="sr-node-label">{node.title}</span>
-        {node.type === "category" && (
+        {(node.type === "category" || node.type === "post" || node.type === "project") && (
           <span class="visible-node-label" aria-hidden="true">
-            <strong>{node.title}</strong>
-            <small>{node.meta}</small>
+            <strong>{node.type === "post" ? "文章" : node.type === "project" ? "项目" : node.title}</strong>
+            <small>{node.type === "category" ? node.meta : node.title}</small>
           </span>
         )}
       </a>
@@ -77,7 +77,6 @@ const socialIconById: Record<string, SimpleIcon> = {
   <div class="hero-actions">
     <div class="intro-controls" aria-label="开场动画控制">
       <button type="button" data-intro-skip>跳过动画</button>
-      <button type="button" data-intro-replay>重播动画</button>
     </div>
     <nav class="social-dock" aria-label="外部链接">
       {socialLinks.map((link) => {
@@ -103,8 +102,8 @@ const socialIconById: Record<string, SimpleIcon> = {
     </nav>
   </div>
 
-  <a class="scroll-cue" href="#orbit-index" aria-label="进入内容索引">
-    <span>进入索引</span>
+  <a class="scroll-cue" href="#orbit-index" aria-label="浏览最新文章">
+    <span>最新文章</span>
   </a>
 
   <p class="sr-only" role="status" data-intro-status>正在生成知识星图</p>
@@ -114,7 +113,6 @@ const socialIconById: Record<string, SimpleIcon> = {
 
 <script>
   import { createOrbitIntro } from "../../scripts/orbit-intro";
-  import { createOrbitScene } from "../../scripts/orbit-scene";
 
   const root = document.querySelector<HTMLElement>("[data-orbit-hero]");
   const stage = root?.querySelector<HTMLElement>("[data-orbit-stage]");
@@ -124,14 +122,22 @@ const socialIconById: Record<string, SimpleIcon> = {
   const payload = dataElement?.textContent ? JSON.parse(dataElement.textContent) : { nodes: [], roles: [] };
 
   if (root && stage && canvas && avatarTarget && Array.isArray(payload.nodes)) {
+    await new Promise<void>((resolve) => {
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(() => resolve(), { timeout: 600 });
+      } else {
+        window.setTimeout(resolve, 0);
+      }
+    });
+    const { createOrbitScene } = await import("../../scripts/orbit-scene");
     const mobile = window.matchMedia("(max-width: 760px)").matches;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const status = root.querySelector<HTMLElement>("[data-intro-status]");
     const card = root.querySelector<HTMLElement>("[data-active-node-card]");
-    const defaultCardMarkup = card?.innerHTML ?? "";
     const roleElement = root.querySelector<HTMLElement>("[data-orbit-role-text]");
     let activeNodeId = "";
     let coarseArmedId = "";
+    let clearTimer = 0;
     let roleTimer = 0;
     let titlePointerX = 0;
     let titlePointerY = 0;
@@ -150,7 +156,7 @@ const socialIconById: Record<string, SimpleIcon> = {
     const title = root.querySelector<HTMLElement>(".orbit-particle-title");
     const titleContext = titleCanvas?.getContext("2d", { willReadFrequently: true });
     let titleMaskSurface: HTMLCanvasElement | null = null;
-    let titleParticles: Array<{ tx: number; ty: number; ox: number; oy: number; size: number; delay: number; depth: number; kind: "body" | "highlight" | "drift" }> = [];
+    let titleParticles: Array<{ tx: number; ty: number; ox: number; oy: number; size: number; delay: number; depth: number; kind: "body" | "highlight" | "chroma" | "drift" }> = [];
 
     const buildTitleParticles = () => {
       if (!titleCanvas || !title || !titleContext) return;
@@ -174,19 +180,19 @@ const socialIconById: Record<string, SimpleIcon> = {
       const baseSize = 120;
       const paddingX = mobile ? 10 : 18;
       const paddingY = mobile ? 8 : 12;
-      maskContext.font = `600 ${baseSize}px Georgia, Times New Roman, serif`;
+      maskContext.font = `500 ${baseSize}px Georgia, Times New Roman, serif`;
       const measured = maskContext.measureText("AloftVox").width;
       const availableWidth = Math.max(1, width - paddingX * 2);
       const availableHeight = Math.max(1, height - paddingY * 2);
       const fontSize = Math.min(availableHeight * 0.82, availableWidth / Math.max(measured, 1) * baseSize * 0.985);
-      maskContext.font = `600 ${fontSize}px Georgia, Times New Roman, serif`;
+      maskContext.font = `500 ${fontSize}px Georgia, Times New Roman, serif`;
       maskContext.textAlign = "left";
       maskContext.textBaseline = "middle";
       maskContext.fillStyle = "#ffffff";
       maskContext.fillText("AloftVox", paddingX, height * 0.51);
       titleMaskSurface = maskSurface;
       const pixels = maskContext.getImageData(0, 0, width, height);
-      const gap = mobile ? 2.28 : 1.84;
+      const gap = mobile ? 2.18 : 1.82;
       const sourceRect = avatarTarget.getBoundingClientRect();
       const sourceX = sourceRect.width ? sourceRect.left + sourceRect.width / 2 - rect.left : width * 1.18;
       const sourceY = sourceRect.height ? sourceRect.top + sourceRect.height / 2 - rect.top : height * 0.52;
@@ -203,18 +209,19 @@ const socialIconById: Record<string, SimpleIcon> = {
           const alpha = pixels.data[(y * width + x) * 4 + 3];
           if (alpha < 72) continue;
           const depth = 0.12 + random() * 0.88;
-          const kind = random() < 0.085 ? "highlight" : "body";
+          const particleRoll = random();
+          const kind = particleRoll < 0.065 ? "highlight" : particleRoll < 0.26 ? "chroma" : "body";
           next.push({
             tx: x + (random() - 0.5) * 0.72,
             ty: y + (random() - 0.5) * 0.72,
             ox: sourceX + (random() - 0.5) * (120 + depth * 120),
             oy: sourceY + (random() - 0.5) * (70 + depth * 100),
-            size: kind === "highlight" ? 0.94 + random() * 0.66 : 0.22 + Math.pow(random(), 1.55) * 0.74,
+            size: kind === "highlight" ? 0.96 + random() * 0.68 : kind === "chroma" ? 0.38 + random() * 0.56 : 0.19 + Math.pow(random(), 1.65) * 0.64,
             delay: random(),
             depth,
             kind,
           });
-          if (random() < 0.006) {
+          if (random() < 0.005) {
             const driftDirection = random() > 0.5 ? 1 : -1;
             next.push({
               tx: x + driftDirection * (6 + random() * 14),
@@ -241,8 +248,8 @@ const socialIconById: Record<string, SimpleIcon> = {
       if (titleMaskSurface) {
         titleContext.save();
         titleContext.globalCompositeOperation = "source-over";
-        titleContext.globalAlpha = 0.082 * Math.min(1, progress * 1.25);
-        titleContext.filter = "blur(1.35px)";
+        titleContext.globalAlpha = 0.06 * Math.min(1, progress * 1.25);
+        titleContext.filter = "blur(1.55px)";
         titleContext.drawImage(titleMaskSurface, 0, 0, width, height);
         titleContext.restore();
       }
@@ -250,29 +257,34 @@ const socialIconById: Record<string, SimpleIcon> = {
       titleParticles.forEach((particle) => {
         const local = reducedMotion ? 1 : Math.min(1, Math.max(0, (progress - particle.delay * 0.2) / 0.8));
         const eased = 1 - Math.pow(1 - local, 3);
-        const driftAmount = particle.kind === "drift" ? 0.24 : particle.kind === "highlight" ? 0.12 : 0.055;
+        const driftAmount = particle.kind === "drift" ? 0.2 : particle.kind === "highlight" ? 0.1 : particle.kind === "chroma" ? 0.07 : 0.04;
         const drift = reducedMotion ? 0 : Math.sin(elapsed * (0.45 + particle.depth * 0.42) + particle.delay * 17) * driftAmount;
         const depthOffsetX = titlePointerX * (particle.depth - 0.38) * (mobile ? 1.4 : 4.8);
         const depthOffsetY = titlePointerY * (particle.depth - 0.38) * (mobile ? 0.9 : 2.8);
         const x = particle.ox + (particle.tx - particle.ox) * eased + drift + depthOffsetX;
-        const verticalDrift = particle.kind === "drift" ? 0.25 : particle.kind === "highlight" ? 0.12 : 0.045;
+        const verticalDrift = particle.kind === "drift" ? 0.22 : particle.kind === "highlight" ? 0.1 : particle.kind === "chroma" ? 0.07 : 0.035;
         const y = particle.oy + (particle.ty - particle.oy) * eased + Math.cos(elapsed + particle.delay * 13) * verticalDrift + depthOffsetY;
         const depthOpacity = 0.28 + particle.depth * 0.72;
-        const alpha = particle.kind === "highlight" ? 0.98 : particle.kind === "drift" ? 0.22 : 0.91;
-        const lilacHighlight = particle.kind === "highlight" && particle.delay > 0.68;
-        const red = particle.kind === "highlight" ? (lilacHighlight ? 226 : 246) : 202 + Math.round(particle.depth * 38);
-        const green = particle.kind === "highlight" ? (lilacHighlight ? 220 : 250) : 216 + Math.round(particle.depth * 30);
-        const blue = particle.kind === "drift" ? 246 : 252 + Math.round(particle.depth * 3);
+        const voxEmphasis = Math.max(0, Math.min(1, (particle.tx / width - 0.48) / 0.46));
+        const alpha = particle.kind === "highlight" ? 1 : particle.kind === "chroma" ? 0.94 + voxEmphasis * 0.04 : particle.kind === "drift" ? 0.22 : 0.88;
+        const lilacHighlight = particle.kind === "highlight" && particle.delay > 0.58;
+        const blueChroma = particle.kind === "chroma" && particle.delay < 0.57 + voxEmphasis * 0.1;
+        const bodyLilac = particle.kind === "body" && particle.depth > 0.44 && (particle.delay > 0.74 || (voxEmphasis > 0.45 && particle.delay > 0.64));
+        const red = particle.kind === "highlight" ? (lilacHighlight ? 246 : 255) : particle.kind === "chroma" ? (blueChroma ? 137 : 205) : 207 + Math.round(particle.depth * 32) + (bodyLilac ? 8 : 0);
+        const green = particle.kind === "highlight" ? (lilacHighlight ? 226 : 240) : particle.kind === "chroma" ? (blueChroma ? 190 : 184) : 220 + Math.round(particle.depth * 25) - (bodyLilac ? 5 : 0);
+        const blue = particle.kind === "drift" ? 250 : 255;
+        if (particle.kind === "highlight" || particle.kind === "chroma") {
+          titleContext.fillStyle = particle.kind === "chroma"
+            ? `rgba(${blueChroma ? 98 : 202}, ${blueChroma ? 165 : 168}, 255, ${eased * (0.38 + voxEmphasis * 0.05) * particle.depth})`
+            : `rgba(${lilacHighlight ? 233 : 255}, ${lilacHighlight ? 199 : 224}, 255, ${eased * 0.32 * particle.depth})`;
+          titleContext.beginPath();
+          titleContext.arc(x, y, particle.size * (particle.kind === "chroma" ? 2.52 : 2.02 + particle.depth * 0.62), 0, Math.PI * 2);
+          titleContext.fill();
+        }
         titleContext.fillStyle = `rgba(${red}, ${green}, ${blue}, ${eased * alpha * depthOpacity})`;
         titleContext.beginPath();
         titleContext.arc(x, y, particle.size, 0, Math.PI * 2);
         titleContext.fill();
-        if (particle.kind === "highlight") {
-          titleContext.fillStyle = `rgba(${lilacHighlight ? 211 : 225}, ${lilacHighlight ? 205 : 232}, 255, ${eased * 0.24 * particle.depth})`;
-          titleContext.beginPath();
-          titleContext.arc(x, y, particle.size * (1.65 + particle.depth * 0.72), 0, Math.PI * 2);
-          titleContext.fill();
-        }
       });
     };
 
@@ -289,31 +301,49 @@ const socialIconById: Record<string, SimpleIcon> = {
     });
 
     const nodeById = new Map(payload.nodes.map((node: any) => [node.id, node]));
+    const cancelClear = () => {
+      if (!clearTimer) return;
+      window.clearTimeout(clearTimer);
+      clearTimer = 0;
+    };
+
     const clearNode = () => {
+      cancelClear();
       activeNodeId = "";
       coarseArmedId = "";
       scene.setActiveNode(null);
-      if (!card?.hasAttribute("data-default-card")) {
-        card?.removeAttribute("data-card-visible");
-        return;
-      }
-      card.innerHTML = defaultCardMarkup;
-      card.style.removeProperty("--card-x");
-      card.style.removeProperty("--card-y");
-      card.setAttribute("data-default-card-active", "");
-      card.setAttribute("data-card-visible", "");
+      root.querySelectorAll<HTMLElement>("[data-node-active]").forEach((target) => {
+        target.removeAttribute("data-node-active");
+      });
+      card?.removeAttribute("data-card-visible");
+      card?.style.removeProperty("--card-x");
+      card?.style.removeProperty("--card-y");
+      card?.style.removeProperty("--card-accent");
+    };
+
+    const scheduleClear = () => {
+      cancelClear();
+      clearTimer = window.setTimeout(clearNode, 180);
     };
 
     const showNode = (nodeId: string, source: HTMLElement) => {
       const node: any = nodeById.get(nodeId);
       if (!node || !card) return;
+      cancelClear();
       activeNodeId = nodeId;
       scene.setActiveNode(nodeId);
-      card.removeAttribute("data-default-card-active");
+      root.querySelectorAll<HTMLElement>("[data-node-active]").forEach((target) => {
+        target.removeAttribute("data-node-active");
+      });
+      source.setAttribute("data-node-active", "");
       const preview = payload.previews?.[nodeId];
-      card.querySelector<HTMLElement>("[data-active-node-type]")!.textContent = preview?.category ?? node.type.toUpperCase();
+      card.setAttribute("href", preview?.href ?? node.href);
+      card.setAttribute("aria-label", `打开 ${preview?.title ?? node.title}`);
+      card.style.setProperty("--card-accent", node.color);
+      const nodeTypeLabel = node.type === "post" ? "文章" : node.type === "project" ? "项目" : node.type === "category" ? "分类" : "链接";
+      card.querySelector<HTMLElement>("[data-active-node-type]")!.textContent = nodeTypeLabel;
       card.querySelector<HTMLElement>("[data-active-node-title]")!.textContent = preview?.title ?? node.title;
-      card.querySelector<HTMLElement>("[data-active-node-meta]")!.textContent = preview ? node.meta : node.meta;
+      card.querySelector<HTMLElement>("[data-active-node-meta]")!.textContent = node.meta;
       card.querySelector<HTMLElement>("[data-active-node-description]")!.textContent = preview?.description ?? node.description;
       card.querySelector<HTMLElement>("[data-active-node-date]")!.textContent = preview?.date ?? "";
       card.querySelector<HTMLElement>("[data-active-node-reading]")!.textContent = preview?.readingTime ?? "";
@@ -328,21 +358,85 @@ const socialIconById: Record<string, SimpleIcon> = {
       const heroRect = root.getBoundingClientRect();
       const sourceRect = source.getBoundingClientRect();
       const cardWidth = Math.min(card.offsetWidth || 340, 340);
-      const cardHeight = Math.min(card.offsetHeight || 190, 230);
+      const cardHeight = card.offsetHeight || 190;
       const x = sourceRect.left + sourceRect.width / 2 - heroRect.left;
       const y = sourceRect.top + sourceRect.height / 2 - heroRect.top;
-      let cardX = Math.max(18, Math.min(heroRect.width - cardWidth - 18, x + 28));
-      const cardY = Math.max(88, Math.min(heroRect.height - cardHeight - 34, y - 34));
       const avatarRect = avatarTarget.getBoundingClientRect();
       const avatarLeft = avatarRect.left - heroRect.left;
       const avatarRight = avatarRect.right - heroRect.left;
-      const overlapsAvatar = cardX < avatarRight + 18 && cardX + cardWidth > avatarLeft - 18
-        && cardY < avatarRect.bottom - heroRect.top + 18 && cardY + cardHeight > avatarRect.top - heroRect.top - 18;
-      if (overlapsAvatar) {
-        const rightCandidate = avatarRight + 24;
-        const leftCandidate = avatarLeft - cardWidth - 24;
-        cardX = rightCandidate + cardWidth < heroRect.width - 18 ? rightCandidate : Math.max(18, leftCandidate);
-      }
+      const avatarTop = avatarRect.top - heroRect.top;
+      const avatarBottom = avatarRect.bottom - heroRect.top;
+      const headerBottom = document.querySelector<HTMLElement>(".site-header")?.getBoundingClientRect().bottom ?? 68;
+      const boundaryTop = Math.max(82, headerBottom - heroRect.top + 14);
+      const boundary = {
+        left: 18,
+        right: Math.max(18, heroRect.width - cardWidth - 18),
+        top: boundaryTop,
+        bottom: Math.max(boundaryTop, heroRect.height - cardHeight - 30),
+      };
+      const nodeRadius = Math.max(sourceRect.width, sourceRect.height) / 2;
+      const cardGap = 16;
+      const clampPosition = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+      const makeRect = (left: number, top: number, width: number, height: number, padding = 0) => ({
+        left: left - padding,
+        top: top - padding,
+        right: left + width + padding,
+        bottom: top + height + padding,
+      });
+      const overlapRatio = (
+        cardRect: { left: number; top: number; right: number; bottom: number },
+        protectedRect: { left: number; top: number; right: number; bottom: number },
+      ) => {
+        const overlapWidth = Math.max(0, Math.min(cardRect.right, protectedRect.right) - Math.max(cardRect.left, protectedRect.left));
+        const overlapHeight = Math.max(0, Math.min(cardRect.bottom, protectedRect.bottom) - Math.max(cardRect.top, protectedRect.top));
+        return (overlapWidth * overlapHeight) / Math.max(1, cardWidth * cardHeight);
+      };
+      const toHeroRect = (rect: DOMRect, padding = 0) => makeRect(
+        rect.left - heroRect.left,
+        rect.top - heroRect.top,
+        rect.width,
+        rect.height,
+        padding,
+      );
+      const avatarBounds = makeRect(avatarLeft, avatarTop, avatarRight - avatarLeft, avatarBottom - avatarTop, 18);
+      const sourceBounds = makeRect(
+        sourceRect.left - heroRect.left,
+        sourceRect.top - heroRect.top,
+        sourceRect.width,
+        sourceRect.height,
+        8,
+      );
+      const actionsRect = root.querySelector<HTMLElement>(".hero-actions")?.getBoundingClientRect();
+      const actionsBounds = actionsRect ? toHeroRect(actionsRect, 18) : null;
+      const copyBounds = Array.from(root.querySelectorAll<HTMLElement>(
+        ".orbit-kicker, .orbit-particle-title, .hero-manifesto, .intro-stack",
+      )).map((element) => toHeroRect(element.getBoundingClientRect(), 10));
+      const awayFromAvatar = x < (avatarLeft + avatarRight) / 2 ? "left" : "right";
+      const rawCandidates = {
+        left: { x: x - nodeRadius - cardGap - cardWidth, y: y - cardHeight / 2 },
+        right: { x: x + nodeRadius + cardGap, y: y - cardHeight / 2 },
+        above: { x: x - cardWidth / 2, y: y - nodeRadius - cardGap - cardHeight },
+        below: { x: x - cardWidth / 2, y: y + nodeRadius + cardGap },
+      };
+      const candidateOrder = [awayFromAvatar, "above", "below", awayFromAvatar === "left" ? "right" : "left"] as const;
+      const candidates = candidateOrder.map((side, index) => {
+        const raw = rawCandidates[side];
+        const candidateX = clampPosition(raw.x, boundary.left, boundary.right);
+        const candidateY = clampPosition(raw.y, boundary.top, boundary.bottom);
+        const rect = makeRect(candidateX, candidateY, cardWidth, cardHeight);
+        const edgeX = clampPosition(x, rect.left, rect.right);
+        const edgeY = clampPosition(y, rect.top, rect.bottom);
+        const proximity = Math.hypot(edgeX - x, edgeY - y);
+        const collisionPenalty = overlapRatio(rect, avatarBounds) * 5200
+          + overlapRatio(rect, sourceBounds) * 6200
+          + (actionsBounds ? overlapRatio(rect, actionsBounds) * 5600 : 0)
+          + copyBounds.reduce((score, copyRect) => score + overlapRatio(rect, copyRect) * 2600, 0);
+        const clampPenalty = Math.hypot(candidateX - raw.x, candidateY - raw.y) * 0.8;
+        return { x: candidateX, y: candidateY, score: proximity + collisionPenalty + clampPenalty + index * 2 };
+      });
+      const bestCandidate = candidates.reduce((best, candidate) => candidate.score < best.score ? candidate : best);
+      const cardX = bestCandidate.x;
+      const cardY = bestCandidate.y;
       card.style.setProperty("--card-x", `${cardX}px`);
       card.style.setProperty("--card-y", `${cardY}px`);
       card.setAttribute("data-card-visible", "true");
@@ -352,8 +446,8 @@ const socialIconById: Record<string, SimpleIcon> = {
       const nodeId = target.dataset.orbitNodeHotspot ?? "";
       target.addEventListener("mouseenter", () => showNode(nodeId, target));
       target.addEventListener("focus", () => showNode(nodeId, target));
-      target.addEventListener("mouseleave", clearNode);
-      target.addEventListener("blur", clearNode);
+      target.addEventListener("mouseleave", scheduleClear);
+      target.addEventListener("blur", scheduleClear);
       target.addEventListener("click", (event) => {
         if (!window.matchMedia("(hover: none)").matches || coarseArmedId === nodeId) return;
         event.preventDefault();
@@ -362,43 +456,66 @@ const socialIconById: Record<string, SimpleIcon> = {
       });
     });
 
-    root.querySelectorAll<HTMLElement>("[data-social-node]").forEach((target) => {
-      const nodeId = target.dataset.socialNode ?? "";
-      target.addEventListener("mouseenter", () => showNode(nodeId, target));
-      target.addEventListener("focus", () => showNode(nodeId, target));
-      target.addEventListener("mouseleave", clearNode);
-      target.addEventListener("blur", clearNode);
-    });
+    card?.addEventListener("mouseenter", cancelClear);
+    card?.addEventListener("focus", cancelClear);
+    card?.addEventListener("mouseleave", scheduleClear);
+    card?.addEventListener("blur", scheduleClear);
 
-    avatarTarget.addEventListener("mouseenter", () => scene.flipAvatar(true));
-    avatarTarget.addEventListener("mouseleave", () => scene.flipAvatar(false));
-    avatarTarget.addEventListener("focus", () => scene.flipAvatar(true));
-    avatarTarget.addEventListener("blur", () => scene.flipAvatar(false));
-    avatarTarget.addEventListener("click", () => scene.flipAvatar());
+    let avatarPointerInside = false;
+    avatarTarget.addEventListener("mouseenter", () => {
+      avatarPointerInside = true;
+      scene.flipAvatar();
+    });
+    avatarTarget.addEventListener("mouseleave", () => {
+      avatarPointerInside = false;
+    });
+    avatarTarget.addEventListener("click", (event) => {
+      if (!avatarPointerInside || event.detail === 0) scene.flipAvatar();
+    });
 
     const startRoleLoop = () => {
       if (!roleElement || reducedMotion || roleTimer) return;
       const roles = Array.isArray(payload.roles) && payload.roles.length ? payload.roles : ["Orbit Library"];
-      if (roles.length < 2) return;
+      const roleGlyphs = roles.map((role: string) => Array.from(role));
       let index = 0;
-      roleTimer = window.setInterval(() => {
-        roleElement.style.opacity = "0";
-        window.setTimeout(() => {
-          index = (index + 1) % roles.length;
-          roleElement.textContent = roles[index];
-          roleElement.style.opacity = "1";
-        }, 180);
-      }, 3500);
+      let visibleGlyphs = 0;
+      let deleting = false;
+
+      const typeNextGlyph = () => {
+        const glyphs = roleGlyphs[index] ?? [];
+        if (deleting) {
+          visibleGlyphs = Math.max(0, visibleGlyphs - 1);
+          roleElement.textContent = glyphs.slice(0, visibleGlyphs).join("");
+          if (visibleGlyphs === 0) {
+            deleting = false;
+            index = (index + 1) % roles.length;
+            roleTimer = window.setTimeout(typeNextGlyph, 360);
+            return;
+          }
+          roleTimer = window.setTimeout(typeNextGlyph, 28);
+          return;
+        }
+
+        visibleGlyphs = Math.min(glyphs.length, visibleGlyphs + 1);
+        roleElement.textContent = glyphs.slice(0, visibleGlyphs).join("");
+        if (visibleGlyphs === glyphs.length) {
+          deleting = true;
+          roleTimer = window.setTimeout(typeNextGlyph, 1900);
+          return;
+        }
+
+        const glyph = glyphs[visibleGlyphs - 1] ?? "";
+        const punctuationPause = /[,.!?，。！？]/.test(glyph) ? 150 : 0;
+        roleTimer = window.setTimeout(typeNextGlyph, 54 + punctuationPause);
+      };
+
+      roleElement.textContent = "";
+      roleTimer = window.setTimeout(typeNextGlyph, 320);
     };
 
     window.addEventListener("aloftvox:orbit-intro-complete", startRoleLoop, { once: true });
     if (intro.isFinished()) startRoleLoop();
     root.querySelector<HTMLElement>("[data-intro-skip]")?.addEventListener("click", () => scene.skip());
-    root.querySelector<HTMLElement>("[data-intro-replay]")?.addEventListener("click", () => {
-      document.documentElement.dataset.orbitIntro = "running";
-      clearNode();
-      scene.replay();
-    });
     window.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
       if (!intro.isFinished()) scene.skip();
@@ -424,7 +541,7 @@ const socialIconById: Record<string, SimpleIcon> = {
     });
 
     window.addEventListener("pagehide", () => {
-      window.clearInterval(roleTimer);
+      window.clearTimeout(roleTimer);
       resizeObserver.disconnect();
       scene.dispose();
     });
@@ -440,9 +557,9 @@ const socialIconById: Record<string, SimpleIcon> = {
     position: fixed !important;
     inset: 0 0 auto !important;
     z-index: 30 !important;
-    border-bottom-color: rgba(221, 231, 248, 0.09) !important;
-    background: rgba(4, 6, 11, 0.34) !important;
-    backdrop-filter: blur(14px);
+    border-bottom-color: rgba(221, 231, 248, 0.13) !important;
+    background: rgba(3, 5, 10, 0.22) !important;
+    backdrop-filter: blur(18px) saturate(1.18);
     transition: opacity 260ms ease, background-color 180ms ease;
   }
 
@@ -452,8 +569,8 @@ const socialIconById: Record<string, SimpleIcon> = {
   }
 
   :global(.site-header[data-scrolled]) {
-    background: rgba(4, 6, 11, 0.82) !important;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+    background: rgba(3, 5, 11, 0.88) !important;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.28);
   }
 
   :global(.site-header .brand),
@@ -471,24 +588,27 @@ const socialIconById: Record<string, SimpleIcon> = {
   .orbit-hero {
     --intro-interface: 0;
     --intro-background: 0;
-    --hero-height: clamp(820px, 90svh, 1020px);
-    --hero-stage-width: min(94vw, 1900px);
-    --hero-gutter: max(24px, calc((100vw - var(--hero-stage-width)) / 2));
+    --hero-height: max(700px, 100svh);
+    --hero-stage-width: 100%;
+    --hero-gutter: clamp(24px, 5.5vw, 112px);
     position: relative;
     width: 100%;
     min-height: var(--hero-height);
     overflow: hidden;
     isolation: isolate;
     color: #f7f9ff;
-    background: #04060b;
+    background: #02040a;
   }
 
   .orbit-hero::before {
     content: "";
     position: absolute;
-    inset: 8% 0 12% 28%;
+    inset: 2% -8% 7% 18%;
     z-index: -2;
-    background: radial-gradient(circle at 58% 46%, rgba(97, 113, 176, 0.13), transparent 28%), radial-gradient(circle at 36% 66%, rgba(119, 76, 112, 0.08), transparent 24%);
+    background:
+      radial-gradient(circle at 60% 43%, rgba(116, 150, 238, 0.38), transparent 25%),
+      radial-gradient(circle at 47% 57%, rgba(181, 107, 183, 0.2), transparent 29%),
+      radial-gradient(circle at 78% 66%, rgba(70, 130, 225, 0.14), transparent 31%);
     filter: blur(18px);
     pointer-events: none;
   }
@@ -498,10 +618,10 @@ const socialIconById: Record<string, SimpleIcon> = {
     inset: 0;
     z-index: -3;
     background: url("/images/home/orbit-horizon-clean.webp") left calc(100% + 30px) / cover no-repeat;
-    filter: brightness(0.56) saturate(0.64) contrast(0.9);
-    opacity: calc(0.06 + var(--intro-background) * 0.45);
-    transform: scale(1.018) translateY(20px);
-    mask-image: linear-gradient(90deg, #000 0%, #000 43%, rgba(0, 0, 0, 0.68) 58%, transparent 73%);
+    filter: brightness(0.9) saturate(1.1) contrast(1.04);
+    opacity: calc(0.1 + var(--intro-background) * 0.67);
+    transform: scale(1.025) translateY(14px);
+    mask-image: linear-gradient(90deg, #000 0%, #000 48%, rgba(0, 0, 0, 0.82) 66%, transparent 88%);
   }
 
   .orbit-stage {
@@ -519,6 +639,7 @@ const socialIconById: Record<string, SimpleIcon> = {
     display: block;
     width: 100%;
     height: 100%;
+    filter: brightness(1.12) saturate(1.18) contrast(1.04);
   }
 
   .orbit-hit-layer {
@@ -567,6 +688,12 @@ const socialIconById: Record<string, SimpleIcon> = {
     opacity: calc(var(--intro-interface) * 0.96);
   }
 
+  .orbit-node-hotspot-post,
+  .orbit-node-hotspot-project {
+    overflow: visible;
+    opacity: calc(var(--intro-interface) * 0.78);
+  }
+
   .visible-node-label {
     position: absolute;
     top: 50%;
@@ -574,11 +701,27 @@ const socialIconById: Record<string, SimpleIcon> = {
     display: grid;
     gap: 1px;
     width: max-content;
-    color: rgba(241, 246, 255, 0.92);
+    color: rgba(247, 250, 255, 0.98);
     text-align: left;
     transform: translateY(-50%);
-    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.86)) drop-shadow(0 0 7px color-mix(in srgb, var(--node-color) 20%, transparent));
+    filter:
+      drop-shadow(0 2px 9px rgba(0, 0, 0, 0.92))
+      drop-shadow(0 0 10px color-mix(in srgb, var(--node-color) 42%, transparent));
     pointer-events: none;
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  .orbit-node-hotspot-post .visible-node-label,
+  .orbit-node-hotspot-project .visible-node-label {
+    opacity: 0.82;
+  }
+
+  .orbit-node-hotspot-post:hover .visible-node-label,
+  .orbit-node-hotspot-project:hover .visible-node-label,
+  .orbit-node-hotspot-post:focus-visible .visible-node-label,
+  .orbit-node-hotspot-project:focus-visible .visible-node-label,
+  .orbit-node-hotspot[data-node-active] .visible-node-label {
+    opacity: 1;
   }
 
   [data-label-side="left"] .visible-node-label {
@@ -587,24 +730,35 @@ const socialIconById: Record<string, SimpleIcon> = {
     text-align: right;
   }
 
+  [data-orbit-node-hotspot="category-projects"] .visible-node-label,
+  [data-orbit-node-hotspot="category-tools-workflow"] .visible-node-label {
+    transform: translateY(calc(-50% - 16px));
+  }
+
+  [data-orbit-node-hotspot="category-life-thinking"] .visible-node-label {
+    transform: translateY(calc(-50% + 18px));
+  }
+
   .visible-node-label strong {
-    color: color-mix(in srgb, var(--node-color) 78%, white);
-    font-size: 0.9rem;
-    font-weight: 690;
+    color: color-mix(in srgb, var(--node-color) 68%, white);
+    font-size: 0.95rem;
+    font-weight: 720;
     line-height: 1.2;
   }
 
   .visible-node-label small {
-    color: rgba(210, 220, 237, 0.66);
-    font-size: 0.73rem;
+    color: rgba(224, 232, 248, 0.78);
+    font-size: 0.76rem;
     line-height: 1.2;
   }
 
   .orbit-node-hotspot:focus-visible,
   .avatar-hit-target:focus-visible {
-    outline: 1px solid color-mix(in srgb, var(--node-color, #8db8ff) 74%, white);
-    outline-offset: 7px;
+    outline: 2px solid color-mix(in srgb, var(--node-color, #8db8ff) 68%, white);
+    outline-offset: 10px;
     opacity: 1;
+    background: color-mix(in srgb, var(--node-color, #8db8ff) 17%, transparent);
+    box-shadow: 0 0 28px color-mix(in srgb, var(--node-color, #8db8ff) 36%, transparent);
   }
 
   .hero-topline {
@@ -647,13 +801,13 @@ const socialIconById: Record<string, SimpleIcon> = {
     z-index: -1;
     width: min(700px, 58vw);
     height: 330px;
-    background: radial-gradient(ellipse at 42% 52%, rgba(4, 6, 11, 0.52), rgba(4, 6, 11, 0.18) 58%, transparent 76%);
+    background: radial-gradient(ellipse at 42% 52%, rgba(2, 4, 9, 0.46), rgba(2, 4, 9, 0.1) 60%, transparent 78%);
     pointer-events: none;
   }
 
   .orbit-kicker {
     margin: 0 0 10px;
-    color: #9ccaff;
+    color: #b5d7ff;
     font-size: 0.78rem;
     font-weight: 760;
     letter-spacing: 0.12em;
@@ -665,13 +819,13 @@ const socialIconById: Record<string, SimpleIcon> = {
     --title-rotate-x: 0deg;
     --title-rotate-y: 0deg;
     position: relative;
-    width: min(760px, 46vw);
-    min-height: clamp(150px, 14vw, 210px);
+    width: min(760px, 47vw);
+    min-height: clamp(148px, 14vw, 206px);
     margin: 0 0 6px;
     color: #ffffff;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(4.6rem, 7.2vw, 7rem);
-    font-weight: 600;
+    font-size: clamp(4.8rem, 7.3vw, 7.3rem);
+    font-weight: 500;
     line-height: 0.96;
     letter-spacing: 0;
     transform: perspective(900px) rotateX(var(--title-rotate-x)) rotateY(var(--title-rotate-y));
@@ -681,8 +835,8 @@ const socialIconById: Record<string, SimpleIcon> = {
 
   .orbit-particle-title > span {
     display: block;
-    color: rgba(225, 236, 255, 0.16);
-    text-shadow: 0 0 24px rgba(107, 155, 218, 0.1);
+    color: rgba(231, 240, 255, 0.24);
+    text-shadow: 0 0 32px rgba(107, 155, 218, 0.2);
     transform: none;
     filter: none;
     opacity: 1;
@@ -697,16 +851,19 @@ const socialIconById: Record<string, SimpleIcon> = {
     inset: 0;
     width: 100%;
     height: 100%;
-    filter: drop-shadow(0 0 5px rgba(170, 203, 245, 0.25)) drop-shadow(5px 7px 9px rgba(5, 8, 14, 0.5));
+    filter:
+      drop-shadow(0 0 7px rgba(151, 201, 255, 0.48))
+      drop-shadow(0 0 19px rgba(191, 154, 255, 0.3))
+      drop-shadow(6px 8px 11px rgba(2, 4, 10, 0.48));
   }
 
   .hero-manifesto {
     width: min(540px, 43.7vw);
     min-height: 1.5em;
     margin: 0 0 7px;
-    color: rgba(199, 212, 233, 0.72);
+    color: rgba(224, 233, 249, 0.86);
     font-size: clamp(0.94rem, 1.12vw, 1.04rem);
-    font-weight: 580;
+    font-weight: 620;
     line-height: 1.42;
     white-space: nowrap;
     opacity: var(--intro-interface);
@@ -739,7 +896,7 @@ const socialIconById: Record<string, SimpleIcon> = {
 
   .intro-stack p {
     margin: 0;
-    color: rgba(197, 208, 227, 0.46);
+    color: rgba(211, 222, 241, 0.68);
     font-size: 0.89rem;
     line-height: 1.58;
   }
@@ -748,123 +905,53 @@ const socialIconById: Record<string, SimpleIcon> = {
     display: none;
   }
 
-  .node-detail {
-    position: absolute;
-    top: var(--card-y, 48%);
-    left: var(--card-x, 64%);
-    z-index: 12;
-    display: grid;
-    gap: 6px;
-    width: min(330px, calc(100vw - 40px));
-    min-height: 176px;
-    border: 1px solid rgba(208, 222, 248, 0.24);
-    border-radius: 7px;
-    padding: 16px 17px;
-    color: #ffffff;
-    background: rgba(7, 10, 17, 0.82);
-    box-shadow: 0 22px 52px rgba(0, 0, 0, 0.36);
-    backdrop-filter: blur(18px);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(8px);
-    pointer-events: none;
-    transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
-  }
-
-  .node-detail[data-card-visible] {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-  }
-
-  .node-detail p,
-  .node-detail h2,
-  .node-detail span,
-  .node-detail small {
-    margin: 0;
-  }
-
-  .node-detail ul {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin: 2px 0 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .node-detail li {
-    border: 1px solid rgba(211, 224, 249, 0.18);
-    border-radius: 4px;
-    padding: 1px 6px;
-    color: rgba(220, 229, 246, 0.68);
-    font-size: 0.65rem;
-  }
-
-  .node-detail footer {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    margin-top: 2px;
-    color: rgba(208, 218, 236, 0.52);
-    font-size: 0.68rem;
-  }
-
-  .node-detail footer b { margin-left: auto; color: #fff; font-weight: 500; }
-
-  .node-detail p {
-    color: #d79a5a;
-    font-size: 0.7rem;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-  }
-
-  .node-detail h2 {
-    font-size: 1.18rem;
-    line-height: 1.28;
-  }
-
-  .node-detail span,
-  .node-detail small {
-    color: rgba(223, 232, 249, 0.68);
-    font-size: 0.84rem;
-    line-height: 1.52;
-  }
-
   .hero-actions {
     position: absolute;
-    right: var(--hero-gutter);
-    bottom: 76px;
+    right: clamp(18px, 2.25vw, 44px);
+    top: 63%;
+    bottom: auto;
     z-index: 15;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
-    opacity: calc(var(--intro-interface) * 0.72);
+    gap: 10px;
+    opacity: calc(var(--intro-interface) * 0.9);
+    transform: translateY(calc(50%));
   }
 
   .social-dock {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 5px;
+    gap: 10px;
   }
 
   .social-dock a {
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 30px;
-    border: 1px solid rgba(216, 228, 249, 0.11);
+    width: 46px;
+    height: 46px;
+    border: 1px solid rgba(216, 228, 249, 0.27);
     border-radius: 50%;
-    color: rgba(223, 232, 249, 0.5);
-    background: rgba(5, 8, 14, 0.28);
-    box-shadow: inset 0 0 10px rgba(117, 168, 231, 0.025);
+    color: rgba(239, 245, 255, 0.82);
+    background: rgba(7, 12, 23, 0.62);
+    box-shadow:
+      inset 0 0 14px rgba(117, 168, 231, 0.09),
+      0 4px 20px rgba(0, 0, 0, 0.2),
+      0 0 18px rgba(104, 155, 228, 0.06);
+    backdrop-filter: blur(13px) saturate(1.18);
     transition: color 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
   }
 
   .social-dock a svg {
-    width: 13px;
-    height: 13px;
+    width: 16px;
+    height: 16px;
     fill: currentColor;
+  }
+
+  .social-dock a[data-social-node="link-csdn"] svg {
+    width: 24px;
+    height: 24px;
   }
 
   .social-dock a span {
@@ -881,11 +968,13 @@ const socialIconById: Record<string, SimpleIcon> = {
 
   .social-dock a:hover,
   .social-dock a:focus-visible {
-    border-color: rgba(156, 202, 255, 0.5);
+    border-color: rgba(170, 211, 255, 0.72);
     color: #ffffff;
-    background: rgba(15, 25, 41, 0.68);
-    box-shadow: 0 0 18px rgba(112, 178, 255, 0.18), inset 0 0 12px rgba(148, 195, 255, 0.08);
-    transform: translateY(-2px);
+    background: rgba(18, 31, 54, 0.82);
+    box-shadow:
+      0 0 28px rgba(112, 178, 255, 0.32),
+      inset 0 0 15px rgba(148, 195, 255, 0.13);
+    transform: translateY(-3px) scale(1.04);
   }
 
   .orbit-hero:has(.node-detail[data-card-visible]) .social-dock {
@@ -893,7 +982,10 @@ const socialIconById: Record<string, SimpleIcon> = {
   }
 
   .intro-controls {
-    position: static;
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 12px);
+    width: max-content;
   }
 
   .intro-controls button {
@@ -908,10 +1000,6 @@ const socialIconById: Record<string, SimpleIcon> = {
     cursor: pointer;
   }
 
-  [data-intro-replay] {
-    display: inline-flex;
-  }
-
   [data-intro-skip] {
     display: none;
   }
@@ -920,18 +1008,14 @@ const socialIconById: Record<string, SimpleIcon> = {
     display: inline-flex;
   }
 
-  [data-intro-running] [data-intro-replay] {
-    display: none;
-  }
-
   .scroll-cue {
     position: absolute;
     left: var(--hero-gutter);
     bottom: 34px;
     z-index: 10;
     display: block;
-    width: 24px;
-    height: 94px;
+    width: 52px;
+    height: 108px;
     opacity: var(--intro-interface);
   }
 
@@ -941,25 +1025,43 @@ const socialIconById: Record<string, SimpleIcon> = {
     top: 0;
     left: 50%;
     width: 1px;
-    height: 82px;
-    background: rgba(239, 244, 255, 0.58);
+    height: 92px;
+    background: linear-gradient(to bottom, rgba(239, 244, 255, 0.72), rgba(151, 190, 244, 0.32));
+    box-shadow: 0 0 12px rgba(150, 194, 255, 0.16);
   }
 
   .scroll-cue::after {
     content: "";
     position: absolute;
     bottom: 0;
-    left: calc(50% - 5px);
-    width: 10px;
-    height: 10px;
-    border: 1px solid rgba(239, 244, 255, 0.78);
+    left: calc(50% - 6px);
+    width: 12px;
+    height: 12px;
+    border: 1px solid rgba(239, 244, 255, 0.9);
     border-radius: 50%;
     background: #080c14;
+    box-shadow:
+      0 0 0 5px rgba(126, 174, 239, 0.08),
+      0 0 18px rgba(144, 191, 255, 0.28);
   }
 
   .scroll-cue span,
   .sr-only {
     position: absolute;
+  }
+
+  .scroll-cue span {
+    top: 2px;
+    left: 32px;
+    width: max-content;
+    color: rgba(222, 232, 249, 0.64);
+    font-size: 0.67rem;
+    font-weight: 650;
+    letter-spacing: 0.16em;
+    writing-mode: vertical-rl;
+  }
+
+  .sr-only {
     width: 1px;
     height: 1px;
     overflow: hidden;
@@ -982,23 +1084,54 @@ const socialIconById: Record<string, SimpleIcon> = {
 
   @media (min-width: 761px) and (max-height: 800px) {
     .orbit-hero {
-      --hero-height: clamp(740px, 96svh, 780px);
+      --hero-height: max(700px, 100svh);
     }
   }
 
   @media (min-width: 2200px) and (min-height: 1200px) {
-    .orbit-hero {
-      --hero-height: clamp(1020px, 88svh, 1240px);
+    .orbit-copy {
+      transform: translateY(-7.5svh);
+    }
+  }
+
+  @media (min-width: 761px) and (max-width: 900px) {
+    .orbit-node-hotspot-post .visible-node-label,
+    .orbit-node-hotspot-project .visible-node-label {
+      opacity: 0;
     }
 
-    .orbit-copy {
-      transform: translateY(-154px);
+    .orbit-node-hotspot-post:hover .visible-node-label,
+    .orbit-node-hotspot-project:hover .visible-node-label,
+    .orbit-node-hotspot-post:focus-visible .visible-node-label,
+    .orbit-node-hotspot-project:focus-visible .visible-node-label,
+    .orbit-node-hotspot[data-node-active] .visible-node-label {
+      opacity: 1;
     }
   }
 
   @media (max-width: 760px) {
+    :global(.site-header .mobile-nav-list) {
+      border-color: rgba(209, 223, 249, 0.18) !important;
+      background: rgba(9, 13, 22, 0.98) !important;
+    }
+
+    :global(.site-header .mobile-nav-list a) {
+      color: rgba(235, 241, 253, 0.82) !important;
+    }
+
+    :global(.site-header .mobile-nav-list a:hover),
+    :global(.site-header .mobile-nav-list a[aria-current="page"]) {
+      color: #9ccaff !important;
+    }
+
+    :global(.site-header .nav-menu[open] summary) {
+      border-color: rgba(156, 202, 255, 0.42) !important;
+      background: rgba(15, 25, 41, 0.82) !important;
+      color: #ffffff !important;
+    }
+
     .orbit-hero {
-      --hero-height: max(780px, calc(100svh - 56px));
+      --hero-height: clamp(630px, 82svh, 720px);
       --hero-stage-width: 100vw;
       min-height: var(--hero-height);
     }
@@ -1009,7 +1142,9 @@ const socialIconById: Record<string, SimpleIcon> = {
 
     .orbit-backdrop {
       background-position: 58% bottom;
-      opacity: calc(0.08 + var(--intro-background) * 0.46);
+      filter: brightness(0.86) saturate(1.08) contrast(1.05);
+      opacity: calc(0.1 + var(--intro-background) * 0.62);
+      mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0, 0, 0, 0.88) 90%, transparent 100%);
     }
 
     .orbit-copy {
@@ -1026,19 +1161,52 @@ const socialIconById: Record<string, SimpleIcon> = {
 
     .orbit-particle-title {
       width: 100%;
-      min-height: 108px;
+      min-height: 114px;
       margin-top: 2px;
-      font-size: clamp(3.45rem, 16.5vw, 4.35rem);
+      font-size: clamp(3.7rem, 17.5vw, 4.65rem);
     }
 
     .visible-node-label {
+      top: calc(100% + 9px);
+      left: 50%;
+      display: grid;
+      gap: 2px;
+      max-width: 132px;
+      text-align: center;
+      transform: translateX(-50%);
+      opacity: 0.88;
+      filter:
+        drop-shadow(0 2px 8px rgba(0, 0, 0, 0.94))
+        drop-shadow(0 0 11px color-mix(in srgb, var(--node-color) 48%, transparent));
+    }
+
+    [data-label-side="left"] .visible-node-label {
+      right: auto;
+      left: 50%;
+      text-align: center;
+      transform: translateX(-50%);
+    }
+
+    [data-label-side="right"] .visible-node-label {
+      left: 50%;
+      text-align: center;
+      transform: translateX(-50%);
+    }
+
+    .visible-node-label strong {
+      font-size: 0.75rem;
+      line-height: 1.15;
+    }
+
+    .visible-node-label small {
       display: none;
     }
 
     .hero-manifesto {
       width: 100%;
       margin-top: 2px;
-      font-size: 0.94rem;
+      color: rgba(229, 237, 252, 0.88);
+      font-size: 0.96rem;
     }
 
     .intro-stack {
@@ -1046,7 +1214,8 @@ const socialIconById: Record<string, SimpleIcon> = {
     }
 
     .intro-stack p {
-      font-size: 0.88rem;
+      color: rgba(215, 225, 243, 0.7);
+      font-size: 0.9rem;
     }
 
     .intro-stack p:not(:first-child) {
@@ -1055,34 +1224,42 @@ const socialIconById: Record<string, SimpleIcon> = {
 
     .hero-actions {
       right: 14px;
-      bottom: 58px;
+      top: auto;
+      bottom: 54px;
+      flex-direction: row;
+      gap: 6px;
+      transform: none;
+    }
+
+    .social-dock {
+      flex-direction: row;
       gap: 6px;
     }
 
     .social-dock a {
-      width: 32px;
-      height: 32px;
+      width: 46px;
+      height: 46px;
+    }
+
+    .intro-controls {
+      position: static;
     }
 
     .scroll-cue {
       left: 14px;
-      bottom: 20px;
-      height: 66px;
+      bottom: 16px;
+      width: 44px;
+      height: 76px;
     }
 
     .scroll-cue::before {
-      height: 54px;
+      height: 62px;
     }
 
-    .node-detail {
-      position: absolute;
-      top: auto !important;
-      right: 14px;
-      bottom: 102px;
-      left: 14px !important;
-      width: auto;
-      min-height: 126px;
+    .scroll-cue span {
+      display: none;
     }
+
   }
 
   @media (prefers-reduced-motion: reduce) {

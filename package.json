@@ -12,6 +12,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/rss": "^4.0.19",
     "astro": "^7.0.4",
     "simple-icons": "^16.25.0",
     "three": "^0.185.1"

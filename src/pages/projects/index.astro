@@ -16,8 +16,14 @@ import { projects } from "../../data/projects";
         projects.map((project) => (
           <li>
             <a href={project.href}>
-              <h2>{project.title}</h2>
+              <div class="project-heading">
+                <h2>{project.title}</h2>
+                <span>{project.status}</span>
+              </div>
               <p>{project.description}</p>
+              <ul aria-label="项目标签">
+                {project.tags.map((tag) => <li>{tag}</li>)}
+              </ul>
             </a>
           </li>
         ))
@@ -44,5 +50,47 @@ import { projects } from "../../data/projects";
     text-decoration: underline;
     text-decoration-color: rgba(90, 155, 216, 0.38);
     text-underline-offset: 5px;
+  }
+
+  .project-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .project-heading h2 {
+    margin-bottom: 6px;
+  }
+
+  .project-heading span {
+    flex: 0 0 auto;
+    color: var(--color-subtle);
+    font-size: 0.82rem;
+  }
+
+  .project-list ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .project-list li li {
+    border: 1px solid var(--color-line);
+    border-radius: 7px;
+    padding: 1px 7px;
+    color: var(--color-subtle);
+    font-size: 0.78rem;
+  }
+
+  @media (max-width: 520px) {
+    .project-heading {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0;
+    }
   }
 </style>

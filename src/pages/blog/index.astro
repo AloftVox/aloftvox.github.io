@@ -6,20 +6,26 @@ import { blogCategories } from "../../data/categories";
 import { sortPosts } from "../../lib/posts";
 
 const posts = sortPosts(await getCollection("blog"));
+const populatedCategoryKeys = new Set(posts.map((post) => post.data.category));
+const visibleCategories = blogCategories.filter((category) => populatedCategoryKeys.has(category.key));
 ---
 
-<BaseLayout title="技术文章" description="AloftVox 的技术文章列表。">
+<BaseLayout title="文章" description="AloftVox 的技术文章列表。">
   <header class="site-shell page-header">
     <p class="eyebrow">Blog</p>
-    <h1>技术文章</h1>
+    <h1>文章</h1>
     <p>项目实现、实验观察、学习笔记和阶段性复盘都会收在这里。</p>
   </header>
 
   <section class="site-shell section-block">
-    <div class="category-tabs" aria-label="文章分类">
-      <a href="/blog/" aria-current="page">全部</a>
-      {blogCategories.map((category) => <a href={category.href}>{category.label}</a>)}
-    </div>
+    {
+      visibleCategories.length >= 2 && (
+        <div class="category-tabs" aria-label="文章分类">
+          <a href="/blog/" aria-current="page">全部</a>
+          {visibleCategories.map((category) => <a href={category.href}>{category.label}</a>)}
+        </div>
+      )
+    }
     <PostList posts={posts} />
   </section>
 </BaseLayout>

@@ -7,8 +7,9 @@ import { sortPosts } from "../../../lib/posts";
 
 export async function getStaticPaths() {
   const posts = await getCollection("blog");
+  const populatedCategoryKeys = new Set(posts.map((post) => post.data.category));
 
-  return blogCategories.map((category) => ({
+  return blogCategories.filter((category) => populatedCategoryKeys.has(category.key)).map((category) => ({
     params: { category: category.key },
     props: {
       category,
@@ -18,6 +19,9 @@ export async function getStaticPaths() {
 }
 
 const { category, posts } = Astro.props;
+const allPosts = await getCollection("blog");
+const populatedCategoryKeys = new Set(allPosts.map((post) => post.data.category));
+const visibleCategories = blogCategories.filter((item) => populatedCategoryKeys.has(item.key));
 ---
 
 <BaseLayout title={category.label} description={category.description}>
@@ -28,16 +32,18 @@ const { category, posts } = Astro.props;
   </header>
 
   <section class="site-shell section-block">
-    <div class="category-tabs" aria-label="文章分类">
-      <a href="/blog/">全部</a>
-      {
-        blogCategories.map((item) => (
-          <a href={item.href} aria-current={item.key === category.key ? "page" : undefined}>
-            {item.label}
-          </a>
-        ))
-      }
-    </div>
+    {
+      visibleCategories.length >= 2 && (
+        <div class="category-tabs" aria-label="文章分类">
+          <a href="/blog/">全部</a>
+          {visibleCategories.map((item) => (
+            <a href={item.href} aria-current={item.key === category.key ? "page" : undefined}>
+              {item.label}
+            </a>
+          ))}
+        </div>
+      )
+    }
     <PostList posts={posts} />
   </section>
 </BaseLayout>

@@ -8,8 +8,8 @@ const { articles } = Astro.props;
   <div class="home-shell">
     <div class="section-marker"><span>01</span></div>
     <header class="section-heading">
-      <div><p>Latest Articles</p><h2 id="recent-title">Recent Posts</h2><small>最新文章</small></div>
-      <a href="/blog/">View all articles <span aria-hidden="true">→</span></a>
+      <div><p>Blog</p><h2 id="recent-title">最新文章</h2><small>Latest Articles</small></div>
+      <a href="/blog/">查看全部文章 <span aria-hidden="true">→</span></a>
     </header>
     <div class="article-list">
       {articles.map((article) => (
@@ -28,25 +28,25 @@ const { articles } = Astro.props;
 </section>
 
 <style>
-  .home-section { background:#fbfaf7; color:#1b1c20; }
-  .home-shell { position:relative; width:min(1280px,calc(100% - 80px)); margin:0 auto; padding:62px 0 26px 68px; }
-  .section-marker { position:absolute; top:66px; bottom:0; left:0; width:24px; border-left:1px solid #d6d9df; }
-  .section-marker span { position:absolute; top:-4px; left:-9px; color:#98999d; font:500 .76rem Georgia,serif; background:#fbfaf7; padding:0 4px; }
+  .home-section { background:var(--home-paper); color:var(--home-text); transition:background-color 220ms ease,color 220ms ease; }
+  .home-shell { position:relative; width:min(1280px,calc(100% - 80px)); margin:0 auto; padding:38px 0 26px 68px; }
+  .section-marker { position:absolute; top:42px; bottom:0; left:0; width:24px; border-left:1px solid var(--home-line); }
+  .section-marker span { position:absolute; top:-4px; left:-9px; color:var(--home-subtle); font:500 .76rem Georgia,serif; background:var(--home-paper); padding:0 4px; }
   .section-heading { display:flex; align-items:end; justify-content:space-between; gap:24px; margin-bottom:24px; }
-  .section-heading p,.section-heading small { margin:0; color:#91939a; font-size:.75rem; }
+  .section-heading p,.section-heading small { margin:0; color:var(--home-subtle); font-size:.75rem; }
   .section-heading h2 { margin:4px 0 1px; font:500 clamp(2.15rem,3vw,3.15rem)/1.02 Georgia,"Microsoft YaHei",serif; }
-  .section-heading a { color:#4e678b; font-size:.82rem; }
-  .article-list { border-top:1px solid #d9dce2; }
-  article { position:relative; border-bottom:1px solid #e0e1e3; }
-  article::before { content:""; position:absolute; top:50%; left:-69px; width:7px; height:7px; border:2px solid #fbfaf7; border-radius:50%; background:var(--article-color); box-shadow:0 0 0 1px color-mix(in srgb,var(--article-color) 48%,transparent),0 0 8px color-mix(in srgb,var(--article-color) 18%,transparent); transform:translateY(-50%); }
+  .section-heading a { display:inline-flex;align-items:center;min-height:44px;color:var(--home-link);font-size:.82rem; }
+  .article-list { border-top:1px solid var(--home-line); }
+  article { position:relative; border-bottom:1px solid var(--home-line-soft); }
+  article::before { content:""; position:absolute; top:50%; left:-69px; width:7px; height:7px; border:2px solid var(--home-paper); border-radius:50%; background:var(--article-color); box-shadow:0 0 0 1px color-mix(in srgb,var(--article-color) 48%,transparent),0 0 8px color-mix(in srgb,var(--article-color) 22%,transparent); transform:translateY(-50%); }
   article a { display:grid; grid-template-columns:104px minmax(0,1.5fr) 138px minmax(190px,.8fr) 82px; gap:20px; align-items:center; min-height:76px; padding:15px 8px; transition:background-color 160ms ease,transform 160ms ease; }
-  article a:hover { background:color-mix(in srgb,var(--article-color) 6%,transparent); transform:translateX(3px); }
-  time,.reading-time { color:#858890; font-size:.72rem; }
+  article a:hover { background:color-mix(in srgb,var(--article-color) 8%,transparent); transform:translateX(3px); }
+  time,.reading-time { color:var(--home-muted); font-size:.72rem; }
   h3 { margin:0; font-size:.92rem; font-weight:560; line-height:1.5; }
   .article-category { color:var(--article-color); font-size:.75rem; font-weight:650; }
   ul { display:flex; flex-wrap:wrap; gap:5px; margin:0; padding:0; list-style:none; }
-  li { border:1px solid #dededc; border-radius:4px; padding:1px 6px; color:#888b92; font-size:.66rem; }
+  li { border:1px solid var(--home-tag-border); border-radius:4px; padding:1px 6px; color:var(--home-muted); background:color-mix(in srgb,var(--home-surface) 52%,transparent); font-size:.66rem; }
   .reading-time { text-align:right; }
   @media (max-width:900px){ article a{grid-template-columns:84px minmax(0,1fr) 80px;} ul{grid-column:2/4}.article-category{grid-column:3;grid-row:1}.reading-time{display:none} }
-  @media (max-width:620px){ .home-shell{width:min(100% - 28px,1120px);padding:48px 0 20px}.section-marker{display:none}.section-heading{align-items:start}.section-heading h2{font-size:2rem}article a{grid-template-columns:76px minmax(0,1fr);gap:8px 12px;padding:15px 0}.article-category{grid-column:2;grid-row:2}ul{grid-column:2}.section-heading a{white-space:nowrap} }
+  @media (max-width:620px){ .home-shell{width:min(100% - 28px,1120px);padding:32px 0 20px}.section-marker{display:none}.section-heading{align-items:start}.section-heading h2{font-size:2rem}article a{grid-template-columns:76px minmax(0,1fr);gap:8px 12px;padding:15px 0}.article-category{grid-column:2;grid-row:2}ul{grid-column:2}.section-heading a{white-space:nowrap} }
 </style>

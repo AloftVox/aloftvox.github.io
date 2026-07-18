@@ -3,6 +3,9 @@ import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import PostList from "../../components/PostList.astro";
 import { sortPosts } from "../../lib/posts";
+import { projects } from "../../data/projects";
+
+const project = projects.find((entry) => entry.id === "codeguard-tutor")!;
 
 const relatedPosts = sortPosts(await getCollection("blog"))
   .filter(
@@ -17,14 +20,28 @@ const relatedPosts = sortPosts(await getCollection("blog"))
 ---
 
 <BaseLayout
-  title="CodeGuard Tutor"
-  description="CodeGuard Tutor 项目记录：VS Code 插件、静态分析与 AI 辅助解释。"
+  title={project.title}
+  description={project.detail}
 >
   <article class="article-shell">
     <header class="article-header">
       <p class="eyebrow">Project</p>
-      <h1>CodeGuard Tutor</h1>
-      <p class="muted">面向初学开发者的 VS Code 代码安全学习插件。</p>
+      <h1>{project.title}</h1>
+      <p class="muted">{project.description}</p>
+      <dl class="project-facts">
+        <div>
+          <dt>当前状态</dt>
+          <dd>{project.status}</dd>
+        </div>
+        <div>
+          <dt>项目形态</dt>
+          <dd>{project.form}</dd>
+        </div>
+        <div>
+          <dt>主要工作</dt>
+          <dd>{project.role}</dd>
+        </div>
+      </dl>
     </header>
 
     <div class="prose">
@@ -55,8 +72,8 @@ const relatedPosts = sortPosts(await getCollection("blog"))
       <h2>相关链接</h2>
       <p>
         源码：
-        <a href="https://gitee.com/celinaN/code-guard-tutor" target="_blank" rel="noreferrer">
-          https://gitee.com/celinaN/code-guard-tutor
+        <a href={project.sourceHref} target="_blank" rel="noreferrer">
+          在 {project.sourceLabel ?? "代码仓库"} 查看源码
         </a>
       </p>
     </div>
@@ -69,6 +86,29 @@ const relatedPosts = sortPosts(await getCollection("blog"))
 </BaseLayout>
 
 <style>
+  .project-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin: 26px 0 0;
+  }
+
+  .project-facts div {
+    border-left: 1px solid var(--color-line);
+    padding-left: 12px;
+  }
+
+  .project-facts dt {
+    color: var(--color-subtle);
+    font-size: 0.78rem;
+  }
+
+  .project-facts dd {
+    margin: 3px 0 0;
+    color: var(--color-text);
+    font-size: 0.92rem;
+  }
+
   .related-section {
     margin-top: 38px;
     border-top: 1px solid var(--color-line);
@@ -78,5 +118,12 @@ const relatedPosts = sortPosts(await getCollection("blog"))
   .related-section h2 {
     margin-bottom: 16px;
     font-size: 1.35rem;
+  }
+
+  @media (max-width: 620px) {
+    .project-facts {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
   }
 </style>

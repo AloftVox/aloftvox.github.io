@@ -2,38 +2,78 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
-<BaseLayout title="关于" description="AloftVox 的简短介绍。">
+<BaseLayout title="关于" description="AloftVox 的个人介绍、关注方向与公开链接。">
   <article class="article-shell">
     <header class="article-header">
       <p class="eyebrow">About</p>
       <h1>关于</h1>
-      <p class="muted">A Student</p>
+      <p class="muted">一名关注静态分析、代码安全与 AI 辅助开发的学生开发者。</p>
     </header>
 
     <div class="prose">
-      <h2>Interests</h2>
+      <p>
+        这里主要记录项目实践、技术学习和阶段性复盘。目前公开的项目是 CodeGuard Tutor，
+        一个结合静态分析与 AI 辅助解释的 VS Code 代码安全学习插件。
+      </p>
+
+      <h2>关注方向</h2>
       <ul>
-        <li>Static Analysis</li>
-        <li>Code Security</li>
-        <li>AI-assisted Development</li>
-        <li>Software Engineering</li>
+        <li>静态分析与跨文件分析</li>
+        <li>代码安全与开发工具</li>
+        <li>AI 辅助开发</li>
+        <li>软件工程实践</li>
       </ul>
 
-      <h2>Links</h2>
-      <ul>
+      <h2>公开链接</h2>
+      <ul class="profile-links">
         <li>
-          GitHub:
           <a href="https://github.com/AloftVox" target="_blank" rel="noreferrer">
-            https://github.com/AloftVox
+            <strong>GitHub</strong>
+            <span>代码与开源项目</span>
           </a>
         </li>
         <li>
-          Gitee:
           <a href="https://gitee.com/bushishangu520" target="_blank" rel="noreferrer">
-            https://gitee.com/bushishangu520
+            <strong>Gitee</strong>
+            <span>国内代码仓库</span>
           </a>
         </li>
       </ul>
     </div>
   </article>
 </BaseLayout>
+
+<style>
+  .profile-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .profile-links a {
+    display: grid;
+    gap: 2px;
+    border: 1px solid var(--color-line);
+    border-radius: 8px;
+    padding: 13px 14px;
+    text-decoration: none;
+  }
+
+  .profile-links a:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-line));
+    background: var(--color-accent-soft);
+  }
+
+  .profile-links span {
+    color: var(--color-muted);
+    font-size: 0.86rem;
+  }
+
+  @media (max-width: 520px) {
+    .profile-links {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

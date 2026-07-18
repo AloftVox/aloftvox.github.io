@@ -21,6 +21,16 @@ export function getPostUrl(post: { id: string }) {
   return `/blog/${getPostSlug(post)}/`;
 }
 
+export function getReadingMinutes(source: string) {
+  const readableCharacters = source
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/[#_*`>\[\](){}-]/g, "")
+    .replace(/\s+/g, "")
+    .length;
+
+  return Math.max(1, Math.ceil(readableCharacters / 400));
+}
+
 export function sortPosts<T extends { data: { pubDate: Date } }>(posts: T[]) {
   return [...posts].sort(
     (a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime(),

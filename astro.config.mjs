@@ -7,4 +7,21 @@ export default defineConfig({
   devToolbar: {
     enabled: false,
   },
+  vite: {
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: 'three-vendor',
+                test: /node_modules[\\/]three[\\/]/,
+                maxSize: 300 * 1024,
+              },
+            ],
+          },
+        },
+      },
+    },
+  },
 });

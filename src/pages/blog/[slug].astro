@@ -2,7 +2,13 @@
 import { getCollection, render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getCategoryMeta } from "../../data/categories";
-import { formatDate, getPostSlug, getPostUrl, sortPosts } from "../../lib/posts";
+import {
+  formatDate,
+  getPostSlug,
+  getPostUrl,
+  getReadingMinutes,
+  sortPosts,
+} from "../../lib/posts";
 import { getTagTone } from "../../lib/tags";
 
 export async function getStaticPaths() {
@@ -23,16 +29,29 @@ const category = getCategoryMeta(post.data.category);
 const { Content, headings } = await render(post);
 const tocHeadings = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
 const showToc = tocHeadings.length >= 2;
+const readingSource = "body" in post && typeof post.body === "string" ? post.body : post.data.description;
+const readingTime = `${getReadingMinutes(readingSource)} 分钟阅读`;
+const populatedCategoryKeys = new Set((await getCollection("blog")).map((entry) => entry.data.category));
+const showCategoryNavigation = populatedCategoryKeys.size >= 2;
 ---
 
-<BaseLayout title={post.data.title} description={post.data.description}>
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  type="article"
+  publishedTime={post.data.pubDate}
+>
+  <div class="reading-progress" aria-hidden="true">
+    <span data-reading-progress-bar></span>
+  </div>
   <div class="site-shell article-page">
     <article class="article-main">
       <a class="back-link" href="/blog/">← 返回文章列表</a>
       <header class="article-header">
         <div class="article-meta">
-          <a href={category.href}>{category.label}</a>
+          {showCategoryNavigation ? <a href={category.href}>{category.label}</a> : <span>{category.label}</span>}
           <time datetime={post.data.pubDate.toISOString()}>{formatDate(post.data.pubDate)}</time>
+          <span>{readingTime}</span>
         </div>
         <h1>{post.data.title}</h1>
         <p class="article-description">{post.data.description}</p>
@@ -40,6 +59,24 @@ const showToc = tocHeadings.length >= 2;
           {post.data.tags.map((tag) => <li class={`tag-tone-${getTagTone(tag)}`}>{tag}</li>)}
         </ul>
       </header>
+
+      {
+        showToc && (
+          <details class="mobile-toc">
+            <summary>
+              <span>文章目录</span>
+              <small>{tocHeadings.length} 个章节</small>
+            </summary>
+            <ol>
+              {tocHeadings.map((heading) => (
+                <li class={`depth-${heading.depth}`}>
+                  <a href={`#${heading.slug}`} data-toc-link>{heading.text}</a>
+                </li>
+              ))}
+            </ol>
+          </details>
+        )
+      }
 
       <div class="prose">
         <Content />
@@ -79,7 +116,7 @@ const showToc = tocHeadings.length >= 2;
           <ol>
             {tocHeadings.map((heading) => (
               <li class={`depth-${heading.depth}`}>
-                <a href={`#${heading.slug}`}>{heading.text}</a>
+                <a href={`#${heading.slug}`} data-toc-link>{heading.text}</a>
               </li>
             ))}
           </ol>
@@ -89,7 +126,81 @@ const showToc = tocHeadings.length >= 2;
   </div>
 </BaseLayout>
 
+<script>
+  const article = document.querySelector<HTMLElement>(".article-main");
+  const progressBar = document.querySelector<HTMLElement>("[data-reading-progress-bar]");
+
+  if (article && progressBar) {
+    let ticking = false;
+    const updateReadingProgress = () => {
+      const articleTop = article.getBoundingClientRect().top + window.scrollY;
+      const readableDistance = Math.max(1, article.offsetHeight - window.innerHeight);
+      const progress = Math.min(1, Math.max(0, (window.scrollY - articleTop) / readableDistance));
+      progressBar.style.transform = `scaleX(${progress})`;
+      ticking = false;
+    };
+
+    const requestProgressUpdate = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(updateReadingProgress);
+    };
+
+    updateReadingProgress();
+    window.addEventListener("scroll", requestProgressUpdate, { passive: true });
+    window.addEventListener("resize", requestProgressUpdate, { passive: true });
+  }
+
+  const headings = Array.from(
+    document.querySelectorAll<HTMLElement>(".prose h2[id], .prose h3[id]"),
+  );
+  const tocLinks = Array.from(
+    document.querySelectorAll<HTMLAnchorElement>("[data-toc-link]"),
+  );
+
+  const setCurrentHeading = (id: string) => {
+    tocLinks.forEach((link) => {
+      const linkTarget = decodeURIComponent(link.hash.slice(1));
+      if (linkTarget === id) {
+        link.setAttribute("aria-current", "location");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+  };
+
+  if (headings.length > 0 && tocLinks.length > 0) {
+    setCurrentHeading(headings[0].id);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const current = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+
+        if (current?.target instanceof HTMLElement) {
+          setCurrentHeading(current.target.id);
+        }
+      },
+      { rootMargin: "-18% 0px -72% 0px", threshold: 0 },
+    );
+
+    headings.forEach((heading) => observer.observe(heading));
+  }
+
+  tocLinks.forEach((link) => {
+    link.addEventListener("click", () => {
+      const mobileToc = link.closest<HTMLDetailsElement>(".mobile-toc");
+      if (mobileToc) mobileToc.open = false;
+    });
+  });
+</script>
+
 <style>
+  .reading-progress {
+    display: none;
+  }
+
   .article-page {
     display: grid;
     grid-template-columns: minmax(0, var(--reading-width)) 220px;
@@ -105,7 +216,9 @@ const showToc = tocHeadings.length >= 2;
 
   .back-link {
     display: inline-flex;
-    margin-bottom: 22px;
+    align-items: center;
+    min-height: 44px;
+    margin-bottom: 12px;
     color: var(--color-muted);
     font-size: 0.94rem;
   }
@@ -154,14 +267,21 @@ const showToc = tocHeadings.length >= 2;
   }
 
   .toc a {
+    display: block;
+    border-left: 2px solid transparent;
+    padding: 5px 0 5px 8px;
     color: inherit;
+    transition: border-color 150ms ease, color 150ms ease;
   }
 
-  .toc a:hover {
+  .toc a:hover,
+  .toc a[aria-current="location"] {
+    border-left-color: var(--color-accent);
     color: var(--color-accent-strong);
-    text-decoration: underline;
-    text-decoration-color: rgba(90, 155, 216, 0.38);
-    text-underline-offset: 4px;
+  }
+
+  .mobile-toc {
+    display: none;
   }
 
   .article-footer {
@@ -171,6 +291,9 @@ const showToc = tocHeadings.length >= 2;
   }
 
   .back-list {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     color: var(--color-accent-strong);
     font-weight: 650;
     text-decoration: underline;
@@ -224,6 +347,29 @@ const showToc = tocHeadings.length >= 2;
   }
 
   @media (max-width: 940px) {
+    .reading-progress {
+      position: fixed;
+      top: 68px;
+      right: 0;
+      left: 0;
+      z-index: 20;
+      display: block;
+      height: 2px;
+      background: color-mix(in srgb, var(--color-line) 70%, transparent);
+      pointer-events: none;
+    }
+
+    .reading-progress span {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--color-accent), var(--color-lilac));
+      box-shadow: 0 0 10px color-mix(in srgb, var(--color-accent) 36%, transparent);
+      transform: scaleX(0);
+      transform-origin: left center;
+      will-change: transform;
+    }
+
     .article-page {
       grid-template-columns: minmax(0, var(--reading-width));
     }
@@ -231,11 +377,88 @@ const showToc = tocHeadings.length >= 2;
     .toc {
       display: none;
     }
+
+    .mobile-toc {
+      display: block;
+      margin: 22px 0 2px;
+      border: 1px solid var(--color-line);
+      border-radius: 8px;
+      background: var(--color-surface-soft);
+    }
+
+    .mobile-toc summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 52px;
+      padding: 8px 14px;
+      color: var(--color-text);
+      font-weight: 700;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .mobile-toc summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .mobile-toc summary::after {
+      content: "+";
+      margin-left: auto;
+      color: var(--color-accent-strong);
+      font-size: 1.2rem;
+      font-weight: 500;
+    }
+
+    .mobile-toc[open] summary::after {
+      content: "−";
+    }
+
+    .mobile-toc summary small {
+      color: var(--color-subtle);
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .mobile-toc ol {
+      display: grid;
+      gap: 2px;
+      margin: 0;
+      border-top: 1px solid var(--color-line);
+      padding: 8px;
+      list-style: none;
+    }
+
+    .mobile-toc li.depth-3 {
+      padding-left: 14px;
+    }
+
+    .mobile-toc a {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      border-radius: 6px;
+      padding: 7px 9px;
+      color: var(--color-muted);
+      line-height: 1.45;
+    }
+
+    .mobile-toc a:hover,
+    .mobile-toc a[aria-current="location"] {
+      background: var(--color-accent-soft);
+      color: var(--color-accent-strong);
+    }
   }
 
   @media (max-width: 620px) {
     .article-page {
       padding-top: 34px;
+    }
+
+    .article-header h1 {
+      font-size: clamp(2rem, 8.2vw, 2.35rem);
+      text-wrap: balance;
     }
 
     .adjacent-posts {

@@ -8,8 +8,7 @@ const year = new Date().getFullYear();
     <span>Built with Astro</span>
     <nav aria-label="页脚导航">
       <a href="/about/">About</a>
-      <a href="/rss.xml">RSS</a>
-      <a href="/sitemap-index.xml">Sitemap</a>
+      <a href="/rss.xml" aria-label="订阅 AloftVox RSS">RSS</a>
       <a href="https://github.com/AloftVox" target="_blank" rel="noreferrer">GitHub</a>
     </nav>
   </div>
@@ -19,6 +18,8 @@ const year = new Date().getFullYear();
   .site-footer { border-top:1px solid var(--color-line); color:var(--color-muted); font-size:.75rem; background:var(--color-bg); }
   .footer-inner { display:grid; grid-template-columns:1fr auto 1fr; gap:20px; align-items:center; padding:24px 0 30px; }
   .footer-inner>span:nth-child(2){text-align:center;color:var(--color-subtle)}
-  nav{display:flex;justify-content:flex-end;gap:18px}nav a:hover{color:var(--color-accent-strong)}
+  nav{display:flex;justify-content:flex-end;gap:10px}
+  nav a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0 4px}
+  nav a:hover{color:var(--color-accent-strong)}
   @media(max-width:700px){.footer-inner{grid-template-columns:1fr;gap:8px}.footer-inner>span:nth-child(2){text-align:left}nav{justify-content:flex-start;flex-wrap:wrap}}
 </style>

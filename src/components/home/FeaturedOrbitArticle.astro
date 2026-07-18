@@ -8,16 +8,13 @@ interface Props {
 const { article } = Astro.props;
 ---
 
-<aside
+<a
   class="node-detail"
-  aria-live="polite"
-  aria-label="当前节点文章"
+  href={article.href}
+  aria-label={`打开 ${article.title}`}
   data-active-node-card
-  data-default-card
-  data-default-card-active
-  data-card-visible
 >
-  <p data-active-node-type>{article.category}</p>
+  <p data-active-node-type>文章</p>
   <h2 data-active-node-title>{article.title}</h2>
   <span data-active-node-meta>{article.readingTime}</span>
   <small data-active-node-description>{article.description}</small>
@@ -29,7 +26,7 @@ const { article } = Astro.props;
     <span data-active-node-reading>{article.readingTime}</span>
     <b aria-hidden="true">↗</b>
   </footer>
-</aside>
+</a>
 
 <style>
   .node-detail {
@@ -39,35 +36,60 @@ const { article } = Astro.props;
     z-index: 12;
     display: grid;
     gap: 6px;
-    width: min(330px, calc(100vw - 40px));
-    min-height: 176px;
-    border: 1px solid rgba(218, 228, 250, 0.28);
-    border-radius: 7px;
-    padding: 16px 17px;
+    width: min(306px, calc(100vw - 40px));
+    min-height: 158px;
+    border: 1px solid color-mix(in srgb, var(--card-accent, #9cbcff) 38%, rgba(209, 223, 249, 0.22));
+    border-radius: 6px;
+    padding: 14px 15px;
     color: #fff;
-    background: linear-gradient(135deg, rgba(25, 31, 47, 0.82), rgba(7, 10, 17, 0.78));
-    box-shadow: 0 22px 52px rgba(0, 0, 0, 0.4), 0 0 24px rgba(137, 157, 220, 0.08), inset 0 1px rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(18px) saturate(1.12);
+    background:
+      radial-gradient(circle at 92% 4%, color-mix(in srgb, var(--card-accent, #9cbcff) 22%, transparent), transparent 42%),
+      linear-gradient(145deg, rgba(48, 61, 88, 0.72), rgba(11, 17, 29, 0.68));
+    box-shadow:
+      0 14px 34px rgba(0, 0, 0, 0.24),
+      0 0 28px color-mix(in srgb, var(--card-accent, #9cbcff) 13%, transparent),
+      inset 0 1px rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(15px) saturate(1.08);
     opacity: 0;
     visibility: hidden;
     transform: translateY(8px);
     pointer-events: none;
-    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+    cursor: pointer;
+    text-decoration: none;
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      opacity 180ms ease,
+      transform 180ms ease,
+      visibility 180ms ease;
   }
 
   .node-detail[data-card-visible] {
     opacity: var(--intro-interface, 1);
     visibility: visible;
     transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .node-detail[data-card-visible]:hover,
+  .node-detail[data-card-visible]:focus-visible {
+    border-color: color-mix(in srgb, var(--card-accent, #9cbcff) 72%, white);
+    box-shadow:
+      0 22px 52px rgba(0, 0, 0, 0.34),
+      0 0 38px color-mix(in srgb, var(--card-accent, #9cbcff) 28%, transparent),
+      inset 0 1px rgba(255, 255, 255, 0.12);
+    transform: translateY(-3px);
   }
 
   .node-detail[data-default-card-active] {
-    top: clamp(420px, 50%, 520px);
-    left: clamp(500px, 37vw, 720px);
-    gap: 4px;
-    width: 280px;
+    top: clamp(370px, 45.5%, 460px);
+    left: clamp(460px, 34vw, 650px);
+    gap: 3px;
+    width: 236px;
     min-height: 0;
-    padding: 12px 14px 11px;
+    padding: 9px 11px 8px;
+    background: linear-gradient(145deg, rgba(66, 82, 112, 0.62), rgba(22, 29, 44, 0.48));
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2), 0 0 20px rgba(143, 169, 226, 0.06), inset 0 1px rgba(255, 255, 255, 0.08);
   }
 
   .node-detail p,
@@ -76,8 +98,8 @@ const { article } = Astro.props;
   .node-detail small { margin: 0; }
 
   .node-detail p {
-    color: #a9c9ff;
-    font-size: 0.63rem;
+    color: color-mix(in srgb, var(--card-accent, #9cbcff) 72%, white);
+    font-size: 0.58rem;
     font-weight: 760;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -85,15 +107,15 @@ const { article } = Astro.props;
 
   .node-detail h2 {
     color: #f5f7ff;
-    font-size: 0.94rem;
-    font-weight: 560;
-    line-height: 1.32;
+    font-size: 0.82rem;
+    font-weight: 540;
+    line-height: 1.28;
   }
 
   .node-detail > span,
   .node-detail small {
     color: rgba(220, 228, 245, 0.67);
-    font-size: 0.7rem;
+    font-size: 0.64rem;
     line-height: 1.48;
   }
 
@@ -122,13 +144,13 @@ const { article } = Astro.props;
     align-items: center;
     margin-top: 2px;
     color: rgba(208, 218, 236, 0.58);
-    font-size: 0.66rem;
+    font-size: 0.6rem;
   }
 
   .node-detail footer b {
     margin-left: auto;
     color: #f8fbff;
-    font-size: 0.92rem;
+    font-size: 0.78rem;
     font-weight: 500;
   }
 
@@ -136,6 +158,7 @@ const { article } = Astro.props;
   .node-detail[data-default-card-active] [data-active-node-reading] { display: none; }
 
   .node-detail[data-default-card-active] small {
+    display: block;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -143,8 +166,8 @@ const { article } = Astro.props;
 
   @media (max-width: 900px) {
     .node-detail[data-default-card-active] {
-      left: clamp(430px, 36vw, 520px);
-      width: 280px;
+      left: clamp(410px, 34vw, 500px);
+      width: 230px;
     }
   }
 
@@ -152,10 +175,34 @@ const { article } = Astro.props;
     .node-detail {
       top: auto !important;
       right: 14px;
-      bottom: 102px;
+      bottom: 108px;
       left: 14px !important;
       width: auto;
-      min-height: 126px;
+      min-height: 142px;
+      border-color: color-mix(in srgb, var(--card-accent, #9cbcff) 54%, rgba(189, 211, 255, 0.38));
+      border-radius: 10px;
+      padding: 17px 18px;
+      background:
+        radial-gradient(circle at 92% 5%, color-mix(in srgb, var(--card-accent, #9cbcff) 24%, transparent), transparent 44%),
+        linear-gradient(145deg, rgba(40, 55, 84, 0.92), rgba(8, 13, 24, 0.9));
+      box-shadow:
+        0 22px 48px rgba(0, 0, 0, 0.42),
+        0 0 34px color-mix(in srgb, var(--card-accent, #9cbcff) 22%, transparent),
+        inset 0 1px rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px) saturate(1.18);
+    }
+
+    .node-detail h2 {
+      font-size: 0.96rem;
+    }
+
+    .node-detail > span,
+    .node-detail small {
+      font-size: 0.72rem;
+    }
+
+    .node-detail footer {
+      font-size: 0.68rem;
     }
 
     .node-detail[data-default-card-active] { display: none; }

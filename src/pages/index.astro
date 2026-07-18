@@ -6,37 +6,54 @@ import FeaturedProject from "../components/home/FeaturedProject.astro";
 import HeroTransition from "../components/home/HeroTransition.astro";
 import OrbitHero from "../components/home/OrbitHero.astro";
 import RecentPosts from "../components/home/RecentPosts.astro";
-import SubscribeSection from "../components/home/SubscribeSection.astro";
 import {
-  buildHomeOrbitNodes,
-  demoArticles,
-  featuredProject,
   homeHeroRoles,
   homeIntroLines,
   homeSocialLinks,
-  orbitCategories,
-  previewByNode,
   type HomeArticle,
+  type HomeOrbitCategory,
 } from "../data/home";
-import { getPostUrl, sortPosts } from "../lib/posts";
+import { blogCategories } from "../data/categories";
+import { projects } from "../data/projects";
+import {
+  buildOrbitNodes,
+  getPostOrbitNodeId,
+} from "../lib/orbitNodes";
+import { getPostUrl, getReadingMinutes, sortPosts } from "../lib/posts";
 
 const allPosts = sortPosts(await getCollection("blog"));
 const categoryPresentation = {
-  development: { name: "Web Development", id: "web-development", color: "#64a8ff" },
-  research: { name: "Deep Dives", id: "deep-dives", color: "#e6b85c" },
-  notes: { name: "Life & Thinking", id: "life-thinking", color: "#e2bb66" },
+  development: { name: "开发", color: "#64a8ff", orbit: 1, angleSeed: 0.16 },
+  research: { name: "Deep Dives", color: "#e6b85c", orbit: 2, angleSeed: 0.52 },
+  notes: { name: "Learning Notes", color: "#e2bb66", orbit: 3, angleSeed: 0.82 },
 } as const;
+
+const populatedCategories = blogCategories
+  .map((category): HomeOrbitCategory => {
+    const presentation = categoryPresentation[category.key];
+    return {
+      id: category.key,
+      name: presentation.name,
+      count: allPosts.filter((post) => post.data.category === category.key).length,
+      color: presentation.color,
+      description: category.description,
+      href: category.href,
+      orbit: presentation.orbit,
+      angleSeed: presentation.angleSeed,
+    };
+  })
+  .filter((category) => category.count > 0);
 
 const realArticles: HomeArticle[] = allPosts.map((post) => {
   const category = categoryPresentation[post.data.category];
-  const wordEstimate = `${post.data.title}${post.data.description}`.length;
+  const source = "body" in post && typeof post.body === "string" ? post.body : post.data.description;
   return {
     id: post.id,
     title: post.data.title,
     category: category.name,
-    categoryId: category.id,
+    categoryId: post.data.category,
     date: post.data.pubDate.toISOString().slice(0, 10),
-    readingTime: `${Math.max(5, Math.ceil(wordEstimate / 36))} min read`,
+    readingTime: `${getReadingMinutes(source)} min read`,
     tags: post.data.tags,
     href: getPostUrl(post),
     color: category.color,
@@ -44,16 +61,26 @@ const realArticles: HomeArticle[] = allPosts.map((post) => {
   };
 });
 
-const recentArticles = [...realArticles, ...demoArticles]
-  .filter((article, index, collection) => collection.findIndex((candidate) => candidate.id === article.id) === index)
-  .slice(0, 6);
+const recentArticles = realArticles.slice(0, 6);
+const orbitNodes = buildOrbitNodes({
+  posts: allPosts,
+  categories: [],
+  projects,
+  links: [],
+});
 
-const orbitNodes = buildHomeOrbitNodes();
+const previewByNode: Record<string, HomeArticle> = {};
+realArticles.forEach((article) => {
+  previewByNode[getPostOrbitNodeId({ id: article.id })] = article;
+});
+
+const featuredProject = projects[0];
+const showCategorySection = populatedCategories.length >= 2;
 ---
 
 <BaseLayout
-  title="AloftVox Orbit Library"
-  description="AloftVox 的交互式知识星图：浏览文章、分类、项目和技术实验。"
+  title="技术博客、项目复盘与学习笔记"
+  description="AloftVox 的个人技术站点，记录真实的技术文章、项目实践与学习过程。"
 >
   <div class="home-page">
     <OrbitHero
@@ -64,20 +91,54 @@ const orbitNodes = buildHomeOrbitNodes();
       nodePreviews={previewByNode}
     />
     <HeroTransition />
-    <RecentPosts articles={recentArticles} />
-    <CategorySection categories={orbitCategories} />
-    <FeaturedProject project={featuredProject} />
-    <SubscribeSection />
+    <div id="orbit-index">
+      {recentArticles.length > 0 && <RecentPosts articles={recentArticles} />}
+      {showCategorySection && <CategorySection categories={populatedCategories} />}
+      {featuredProject && <FeaturedProject project={featuredProject} marker={showCategorySection ? "03" : "02"} />}
+    </div>
   </div>
 </BaseLayout>
 
 <style>
   .home-page {
+    --home-paper: #fbfaf7;
+    --home-surface: #ffffff;
+    --home-text: #1b1c20;
+    --home-muted: #6d7078;
+    --home-subtle: #91939a;
+    --home-line: #d9dce2;
+    --home-line-soft: #e0e1e3;
+    --home-link: #4e678b;
+    --home-tag-border: #dededc;
+    --home-transition-glow: rgba(202, 214, 231, 0.16);
+    --home-transition-layer-one: rgba(244, 247, 251, 0.22);
+    --home-transition-layer-two: rgba(184, 199, 219, 0.15);
     overflow: hidden;
-    background: #fbfaf7;
+    background: var(--home-paper);
+    color: var(--home-text);
+    transition: background-color 220ms ease, color 220ms ease;
+  }
+
+  :global(html[data-theme="dark"]) .home-page {
+    --home-paper: #0d1119;
+    --home-surface: #131923;
+    --home-text: #e8edf7;
+    --home-muted: #a6afbf;
+    --home-subtle: #7f899c;
+    --home-line: #2b3445;
+    --home-line-soft: #232b3a;
+    --home-link: #91bff4;
+    --home-tag-border: #343e50;
+    --home-transition-glow: rgba(97, 132, 188, 0.24);
+    --home-transition-layer-one: rgba(69, 91, 130, 0.25);
+    --home-transition-layer-two: rgba(105, 119, 171, 0.13);
   }
 
   :global(.home-page + .site-footer) {
     background: #fbfaf7;
+  }
+
+  :global(html[data-theme="dark"] .home-page + .site-footer) {
+    background: #0d1119;
   }
 </style>
